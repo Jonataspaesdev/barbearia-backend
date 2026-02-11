@@ -1,0 +1,198 @@
+package com.barbearia.service;
+
+import com.barbearia.dto.DTOs.*;
+import com.barbearia.exception.BusinessException;
+import com.barbearia.model.*;
+import com.barbearia.model.Agendamento.StatusAgendamento;
+import com.barbearia.repository.*;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.*;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
+import java.time.*;
+import java.util.*;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+/**
+ * Testes unitários do AgendamentoService.
+ * Cobre as principais regras de negócio:
+ * - Não permite data passada
+ * - Não permite conflito de horário
+ * - Não permite fora do expediente
+ */
+@ExtendWith(MockitoExtension.class)
+class AgendamentoServiceTest {
+
+    @InjectMocks
+    private AgendamentoService service;
+
+    @Mock private AgendamentoRepository agendamentoRepository;
+    @Mock private ClienteRepository clienteRepository;
+    @Mock private BarbeiroRepository barbeiroRepository;
+    @Mock private ServicoRepository servicoRepository;
+
+    private Cliente clienteMock;
+    private Barbeiro barbeiroMock;
+    private Servico servicoMock;
+
+    @BeforeEach
+    void setup() {
+        // Usuário base
+        Usuario usuario = Usuario.builder()
+            .id(1L).nome("Teste").email("teste@email.com")
+            .senha("hash").role(Usuario.TipoUsuario.CLIENTE).build();
+
+        clienteMock = Cliente.builder()
+            .id(1L).nome("João Silva").email("joao@email.com").usuario(usuario).build();
+
+        barbeiroMock = Barbeiro.builder()
+            .id(1L).nome("Carlos Barbeiro").email("carlos@barbearia.com")
+            .horaEntrada(LocalTime.of(8, 0))
+            .horaSaida(LocalTime.of(18, 0))
+            .usuario(usuario).build();
+
+        servicoMock = Servico.builder()
+            .id(1L).nome("Corte Simples").preco(new BigDecimal("25.00"))
+            .duracaoMinutos(30).ativo(true).build();
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // TESTES POSITIVOS
+    // ──────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("Deve criar agendamento com sucesso em horário livre")
+    void deveCriarAgendamentoComSucesso() {
+        LocalDateTime futuro = LocalDateTime.now().plusDays(1).withHour(10).withMinute(0);
+
+        AgendamentoRequest request = new AgendamentoRequest();
+        request.setClienteId(1L);
+        request.setBarbeiroId(1L);
+        request.setServicoId(1L);
+        request.setDataHora(futuro);
+
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(clienteMock));
+        when(barbeiroRepository.findById(1L)).thenReturn(Optional.of(barbeiroMock));
+        when(servicoRepository.findById(1L)).thenReturn(Optional.of(servicoMock));
+        when(agendamentoRepository.findConflitos(any(), any(), any())).thenReturn(List.of());
+
+        Agendamento salvo = Agendamento.builder()
+            .id(1L).cliente(clienteMock).barbeiro(barbeiroMock)
+            .servico(servicoMock).dataHora(futuro).status(StatusAgendamento.AGENDADO).build();
+
+        when(agendamentoRepository.save(any())).thenReturn(salvo);
+
+        AgendamentoResponse response = service.criar(request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getId()).isEqualTo(1L);
+        assertThat(response.getNomeCliente()).isEqualTo("João Silva");
+        verify(agendamentoRepository).save(any(Agendamento.class));
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // TESTES NEGATIVOS — Regras de negócio
+    // ──────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("Deve lançar exceção ao agendar em data passada")
+    void deveLancarExcecaoDataPassada() {
+        LocalDateTime passado = LocalDateTime.now().minusHours(1);
+
+        AgendamentoRequest request = new AgendamentoRequest();
+        request.setClienteId(1L);
+        request.setBarbeiroId(1L);
+        request.setServicoId(1L);
+        request.setDataHora(passado);
+
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(clienteMock));
+        when(barbeiroRepository.findById(1L)).thenReturn(Optional.of(barbeiroMock));
+        when(servicoRepository.findById(1L)).thenReturn(Optional.of(servicoMock));
+
+        assertThatThrownBy(() -> service.criar(request))
+            .isInstanceOf(BusinessException.class)
+            .hasMessageContaining("data passada");
+    }
+
+    @Test
+    @DisplayName("Deve lançar exceção ao agendar fora do expediente do barbeiro")
+    void deveLancarExcecaoForaDoExpediente() {
+        // 07:00 — antes do expediente (entra às 08:00)
+        LocalDateTime foraDoExpediente = LocalDateTime.now().plusDays(1).withHour(7).withMinute(0);
+
+        AgendamentoRequest request = new AgendamentoRequest();
+        request.setClienteId(1L);
+        request.setBarbeiroId(1L);
+        request.setServicoId(1L);
+        request.setDataHora(foraDoExpediente);
+
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(clienteMock));
+        when(barbeiroRepository.findById(1L)).thenReturn(Optional.of(barbeiroMock));
+        when(servicoRepository.findById(1L)).thenReturn(Optional.of(servicoMock));
+
+        assertThatThrownBy(() -> service.criar(request))
+            .isInstanceOf(BusinessException.class)
+            .hasMessageContaining("fora do expediente");
+    }
+
+    @Test
+    @DisplayName("Deve lançar exceção quando há conflito de horário")
+    void deveLancarExcecaoConflito() {
+        LocalDateTime horario = LocalDateTime.now().plusDays(1).withHour(10).withMinute(0);
+
+        // Agendamento existente no mesmo horário
+        Agendamento existente = Agendamento.builder()
+            .id(99L).barbeiro(barbeiroMock).servico(servicoMock).dataHora(horario).build();
+
+        AgendamentoRequest request = new AgendamentoRequest();
+        request.setClienteId(1L);
+        request.setBarbeiroId(1L);
+        request.setServicoId(1L);
+        request.setDataHora(horario);
+
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(clienteMock));
+        when(barbeiroRepository.findById(1L)).thenReturn(Optional.of(barbeiroMock));
+        when(servicoRepository.findById(1L)).thenReturn(Optional.of(servicoMock));
+        when(agendamentoRepository.findConflitos(any(), any(), any()))
+            .thenReturn(List.of(existente));
+
+        assertThatThrownBy(() -> service.criar(request))
+            .isInstanceOf(BusinessException.class)
+            .hasMessageContaining("conflito");
+    }
+
+    @Test
+    @DisplayName("Deve cancelar agendamento com sucesso")
+    void deveCancelarAgendamento() {
+        Agendamento agendamento = Agendamento.builder()
+            .id(1L).cliente(clienteMock).barbeiro(barbeiroMock)
+            .servico(servicoMock).status(StatusAgendamento.AGENDADO).build();
+
+        when(agendamentoRepository.findById(1L)).thenReturn(Optional.of(agendamento));
+        when(agendamentoRepository.save(any())).thenReturn(agendamento);
+
+        service.cancelar(1L);
+
+        assertThat(agendamento.getStatus()).isEqualTo(StatusAgendamento.CANCELADO);
+        verify(agendamentoRepository).save(agendamento);
+    }
+
+    @Test
+    @DisplayName("Não deve cancelar agendamento já concluído")
+    void naoDeveCancelarConcluido() {
+        Agendamento agendamento = Agendamento.builder()
+            .id(1L).cliente(clienteMock).barbeiro(barbeiroMock)
+            .servico(servicoMock).status(StatusAgendamento.CONCLUIDO).build();
+
+        when(agendamentoRepository.findById(1L)).thenReturn(Optional.of(agendamento));
+
+        assertThatThrownBy(() -> service.cancelar(1L))
+            .isInstanceOf(BusinessException.class)
+            .hasMessageContaining("concluído");
+    }
+}
