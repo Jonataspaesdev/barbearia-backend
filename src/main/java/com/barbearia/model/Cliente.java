@@ -1,5 +1,7 @@
 package com.barbearia.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 
 import java.util.ArrayList;
@@ -7,6 +9,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "clientes")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Cliente {
 
     @Id
@@ -15,6 +18,7 @@ public class Cliente {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false, unique = true)
+    @JsonIgnore
     private Usuario usuario;
 
     @Column(nullable = false, length = 100)
@@ -31,6 +35,7 @@ public class Cliente {
             cascade = CascadeType.ALL,
             fetch = FetchType.LAZY
     )
+    @JsonIgnore
     private List<Agendamento> agendamentos = new ArrayList<>();
 
     public Cliente() {
