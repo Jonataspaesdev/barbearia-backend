@@ -2,7 +2,9 @@ package com.barbearia.controller;
 
 import com.barbearia.dto.DTOs.*;
 import com.barbearia.model.Cliente;
+import com.barbearia.model.Servico;
 import com.barbearia.model.Usuario;
+import com.barbearia.repository.ServicoRepository;
 import com.barbearia.repository.UsuarioRepository;
 import com.barbearia.security.JwtUtil;
 import com.barbearia.service.ClienteService;
@@ -114,6 +116,113 @@ class ClienteController {
     @Operation(summary = "Remove cliente")
     public ResponseEntity<Void> deletar(@PathVariable Long id) {
         clienteService.deletar(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+// =================================================================
+// SERVICO CONTROLLER (SEM LOMBOK)
+// =================================================================
+
+@RestController
+@RequestMapping("/servicos")
+@Tag(name = "Serviços", description = "CRUD de serviços")
+class ServicoController {
+
+    private final ServicoRepository servicoRepository;
+
+    public ServicoController(ServicoRepository servicoRepository) {
+        this.servicoRepository = servicoRepository;
+    }
+
+    @PostMapping
+    @Operation(summary = "Cria um novo serviço")
+    public ResponseEntity<?> criar(@RequestBody Servico servico) {
+
+        if (servico.getNome() == null || servico.getNome().isBlank()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Nome do serviço é obrigatório.");
+        }
+
+        if (servicoRepository.existsByNome(servico.getNome())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body("Já existe um serviço com esse nome.");
+        }
+
+        if (servico.getPreco() == null || servico.getPreco() <= 0) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Preço precisa ser maior que 0.");
+        }
+
+        if (servico.getDuracaoMinutos() == null || servico.getDuracaoMinutos() <= 0) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Duração precisa ser maior que 0.");
+        }
+
+        // default se vier null
+        // (se seu entity já inicializa ativo=true, isso aqui é só proteção)
+        if (!servico.isAtivo()) {
+            // deixa como está
+        }
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(servicoRepository.save(servico));
+    }
+
+    @GetMapping
+    @Operation(summary = "Lista serviços ativos")
+    public ResponseEntity<List<Servico>> listarAtivos() {
+        return ResponseEntity.ok(servicoRepository.findByAtivoTrue());
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Busca serviço por ID")
+    public ResponseEntity<Servico> buscarPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(servicoRepository.findById(id).orElseThrow());
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Atualiza serviço")
+    public ResponseEntity<?> atualizar(@PathVariable Long id, @RequestBody Servico servico) {
+
+        Servico existente = servicoRepository.findById(id).orElseThrow();
+
+        // Atualiza só o que veio preenchido
+        if (servico.getNome() != null && !servico.getNome().isBlank()) {
+            // se mudar o nome, checa conflito
+            if (!existente.getNome().equalsIgnoreCase(servico.getNome())
+                    && servicoRepository.existsByNome(servico.getNome())) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body("Já existe um serviço com esse nome.");
+            }
+            existente.setNome(servico.getNome());
+        }
+
+        if (servico.getDescricao() != null) {
+            existente.setDescricao(servico.getDescricao());
+        }
+
+        if (servico.getPreco() != null && servico.getPreco() > 0) {
+            existente.setPreco(servico.getPreco());
+        }
+
+        if (servico.getDuracaoMinutos() != null && servico.getDuracaoMinutos() > 0) {
+            existente.setDuracaoMinutos(servico.getDuracaoMinutos());
+        }
+
+        // Permite ativar/desativar
+        existente.setAtivo(servico.isAtivo());
+
+        return ResponseEntity.ok(servicoRepository.save(existente));
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Desativa serviço (soft delete)")
+    public ResponseEntity<Void> desativar(@PathVariable Long id) {
+        Servico servico = servicoRepository.findById(id).orElseThrow();
+        servico.setAtivo(false);
+        servicoRepository.save(servico);
         return ResponseEntity.noContent().build();
     }
 }
