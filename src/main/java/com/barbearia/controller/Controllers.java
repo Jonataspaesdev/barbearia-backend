@@ -1,12 +1,15 @@
 package com.barbearia.controller;
 
 import com.barbearia.dto.DTOs.*;
+import com.barbearia.model.Barbeiro;
 import com.barbearia.model.Cliente;
 import com.barbearia.model.Servico;
 import com.barbearia.model.Usuario;
+import com.barbearia.repository.BarbeiroRepository;
 import com.barbearia.repository.ServicoRepository;
 import com.barbearia.repository.UsuarioRepository;
 import com.barbearia.security.JwtUtil;
+import com.barbearia.service.AgendamentoService;
 import com.barbearia.service.ClienteService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,6 +22,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 // =================================================================
@@ -159,12 +163,6 @@ class ServicoController {
                     .body("Duração precisa ser maior que 0.");
         }
 
-        // default se vier null
-        // (se seu entity já inicializa ativo=true, isso aqui é só proteção)
-        if (!servico.isAtivo()) {
-            // deixa como está
-        }
-
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(servicoRepository.save(servico));
@@ -188,9 +186,7 @@ class ServicoController {
 
         Servico existente = servicoRepository.findById(id).orElseThrow();
 
-        // Atualiza só o que veio preenchido
         if (servico.getNome() != null && !servico.getNome().isBlank()) {
-            // se mudar o nome, checa conflito
             if (!existente.getNome().equalsIgnoreCase(servico.getNome())
                     && servicoRepository.existsByNome(servico.getNome())) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -211,7 +207,6 @@ class ServicoController {
             existente.setDuracaoMinutos(servico.getDuracaoMinutos());
         }
 
-        // Permite ativar/desativar
         existente.setAtivo(servico.isAtivo());
 
         return ResponseEntity.ok(servicoRepository.save(existente));
@@ -223,6 +218,177 @@ class ServicoController {
         Servico servico = servicoRepository.findById(id).orElseThrow();
         servico.setAtivo(false);
         servicoRepository.save(servico);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+// =================================================================
+// BARBEIRO CONTROLLER (SEM LOMBOK)
+// =================================================================
+
+@RestController
+@RequestMapping("/barbeiros")
+@Tag(name = "Barbeiros", description = "CRUD de barbeiros")
+class BarbeiroController {
+
+    private final BarbeiroRepository barbeiroRepository;
+    private final ServicoRepository servicoRepository;
+
+    public BarbeiroController(BarbeiroRepository barbeiroRepository, ServicoRepository servicoRepository) {
+        this.barbeiroRepository = barbeiroRepository;
+        this.servicoRepository = servicoRepository;
+    }
+
+    @PostMapping
+    @Operation(summary = "Cria um novo barbeiro")
+    public ResponseEntity<BarbeiroResponse> criar(@Valid @RequestBody BarbeiroRequest request) {
+
+        Barbeiro b = new Barbeiro();
+        b.setNome(request.getNome());
+        b.setEmail(request.getEmail());
+        b.setTelefone(request.getTelefone());
+        b.setHoraEntrada(request.getHoraEntrada());
+        b.setHoraSaida(request.getHoraSaida());
+
+        if (request.getServicoIds() != null && !request.getServicoIds().isEmpty()) {
+            // pega os serviços existentes pelos IDs
+            List<Servico> servicos = servicoRepository.findAllById(request.getServicoIds());
+
+            // tenta setar na entity
+            // (se seu Barbeiro tiver outro nome de setter, me manda o Barbeiro.java que eu ajusto)
+            b.setServicos(new ArrayList<>(servicos));
+        }
+
+        b = barbeiroRepository.save(b);
+
+        BarbeiroResponse resp = new BarbeiroResponse();
+        resp.setId(b.getId());
+        resp.setNome(b.getNome());
+        resp.setEmail(b.getEmail());
+        resp.setTelefone(b.getTelefone());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(resp);
+    }
+
+    @GetMapping
+    @Operation(summary = "Lista todos os barbeiros")
+    public ResponseEntity<List<BarbeiroResponse>> listar() {
+
+        List<BarbeiroResponse> lista = barbeiroRepository.findAll().stream().map(b -> {
+            BarbeiroResponse resp = new BarbeiroResponse();
+            resp.setId(b.getId());
+            resp.setNome(b.getNome());
+            resp.setEmail(b.getEmail());
+            resp.setTelefone(b.getTelefone());
+            return resp;
+        }).toList();
+
+        return ResponseEntity.ok(lista);
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Busca barbeiro por ID")
+    public ResponseEntity<BarbeiroResponse> buscarPorId(@PathVariable Long id) {
+
+        Barbeiro b = barbeiroRepository.findById(id).orElseThrow();
+
+        BarbeiroResponse resp = new BarbeiroResponse();
+        resp.setId(b.getId());
+        resp.setNome(b.getNome());
+        resp.setEmail(b.getEmail());
+        resp.setTelefone(b.getTelefone());
+
+        return ResponseEntity.ok(resp);
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Atualiza barbeiro")
+    public ResponseEntity<BarbeiroResponse> atualizar(@PathVariable Long id,
+                                                     @RequestBody BarbeiroRequest request) {
+
+        Barbeiro b = barbeiroRepository.findById(id).orElseThrow();
+
+        if (request.getNome() != null) b.setNome(request.getNome());
+        if (request.getEmail() != null) b.setEmail(request.getEmail());
+        if (request.getTelefone() != null) b.setTelefone(request.getTelefone());
+        if (request.getHoraEntrada() != null) b.setHoraEntrada(request.getHoraEntrada());
+        if (request.getHoraSaida() != null) b.setHoraSaida(request.getHoraSaida());
+
+        if (request.getServicoIds() != null) {
+            List<Servico> servicos = servicoRepository.findAllById(request.getServicoIds());
+            b.setServicos(new ArrayList<>(servicos));
+        }
+
+        b = barbeiroRepository.save(b);
+
+        BarbeiroResponse resp = new BarbeiroResponse();
+        resp.setId(b.getId());
+        resp.setNome(b.getNome());
+        resp.setEmail(b.getEmail());
+        resp.setTelefone(b.getTelefone());
+
+        return ResponseEntity.ok(resp);
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Remove barbeiro")
+    public ResponseEntity<Void> deletar(@PathVariable Long id) {
+        barbeiroRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+// =================================================================
+// AGENDAMENTO CONTROLLER (SEM LOMBOK)
+// =================================================================
+
+@RestController
+@RequestMapping("/agendamentos")
+@Tag(name = "Agendamentos", description = "CRUD de agendamentos")
+class AgendamentoController {
+
+    private final AgendamentoService agendamentoService;
+
+    public AgendamentoController(AgendamentoService agendamentoService) {
+        this.agendamentoService = agendamentoService;
+    }
+
+    @PostMapping
+    @Operation(summary = "Cria um novo agendamento")
+    public ResponseEntity<AgendamentoResponse> criar(@Valid @RequestBody AgendamentoRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(agendamentoService.criar(request));
+    }
+
+    @GetMapping
+    @Operation(summary = "Lista todos os agendamentos")
+    public ResponseEntity<List<AgendamentoResponse>> listarTodos() {
+        return ResponseEntity.ok(agendamentoService.listarTodos());
+    }
+
+    @GetMapping("/cliente/{clienteId}")
+    @Operation(summary = "Lista agendamentos por cliente")
+    public ResponseEntity<List<AgendamentoResponse>> listarPorCliente(@PathVariable Long clienteId) {
+        return ResponseEntity.ok(agendamentoService.listarPorCliente(clienteId));
+    }
+
+    @GetMapping("/barbeiro/{barbeiroId}")
+    @Operation(summary = "Lista agendamentos por barbeiro")
+    public ResponseEntity<List<AgendamentoResponse>> listarPorBarbeiro(@PathVariable Long barbeiroId) {
+        return ResponseEntity.ok(agendamentoService.listarPorBarbeiro(barbeiroId));
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Atualiza agendamento (dataHora/status/observacao)")
+    public ResponseEntity<AgendamentoResponse> atualizar(@PathVariable Long id,
+                                                         @RequestBody AgendamentoUpdateRequest request) {
+        return ResponseEntity.ok(agendamentoService.atualizar(id, request));
+    }
+
+    @DeleteMapping("/{id}/cancelar")
+    @Operation(summary = "Cancela um agendamento")
+    public ResponseEntity<Void> cancelar(@PathVariable Long id) {
+        agendamentoService.cancelar(id);
         return ResponseEntity.noContent().build();
     }
 }
