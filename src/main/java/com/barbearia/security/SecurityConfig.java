@@ -33,15 +33,31 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Auth
                         .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/clientes").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/servicos").permitAll()
+
+                        // Swagger
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        .requestMatchers("/barbeiros/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/servicos").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/servicos/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/servicos/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/agendamentos/**").hasAnyRole("ADMIN", "BARBEIRO")
+
+                        // Clientes
+                        .requestMatchers(HttpMethod.POST, "/clientes").permitAll()
+
+                        // Serviços (listar público)
+                        .requestMatchers(HttpMethod.GET, "/servicos").permitAll()
+
+                        // ✅ Serviços (somente ROLE_ADMIN)
+                        .requestMatchers(HttpMethod.POST, "/servicos").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/servicos/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/servicos/**").hasAuthority("ROLE_ADMIN")
+
+                        // ✅ Barbeiros (somente ROLE_ADMIN)
+                        .requestMatchers("/barbeiros/**").hasAuthority("ROLE_ADMIN")
+
+                        // ✅ Agendamentos (ROLE_ADMIN ou ROLE_BARBEIRO)
+                        .requestMatchers(HttpMethod.PUT, "/agendamentos/**")
+                            .hasAnyAuthority("ROLE_ADMIN", "ROLE_BARBEIRO")
+
+                        // Resto precisa estar logado
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

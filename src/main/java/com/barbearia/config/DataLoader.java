@@ -21,20 +21,25 @@ public class DataLoader implements CommandLineRunner {
     public void run(String... args) {
 
         String email = "admin@admin.com";
+        String senha = "123456";
 
-        if (usuarioRepository.findByEmail(email).isEmpty()) {
+        usuarioRepository.findByEmail(email).ifPresentOrElse(admin -> {
+            // ✅ Admin já existe: garante role certa e senha
+            admin.setRole("ROLE_ADMIN");
+            admin.setSenha(passwordEncoder.encode(senha));
+            usuarioRepository.save(admin);
 
+            System.out.println("✅ Admin atualizado: " + email + " / " + senha + " (ROLE_ADMIN)");
+        }, () -> {
+            // ✅ Admin não existe: cria já certo
             Usuario admin = new Usuario();
             admin.setEmail(email);
             admin.setNome("Administrador");
-            admin.setRole("ADMIN"); // importante: bater com hasRole("ADMIN")
-            admin.setSenha(passwordEncoder.encode("123456"));
-
+            admin.setRole("ROLE_ADMIN");
+            admin.setSenha(passwordEncoder.encode(senha));
             usuarioRepository.save(admin);
 
-            System.out.println("✅ Admin criado: admin@admin.com / 123456");
-        } else {
-            System.out.println("ℹ️ Admin já existe...");
-        }
+            System.out.println("✅ Admin criado: " + email + " / " + senha + " (ROLE_ADMIN)");
+        });
     }
 }

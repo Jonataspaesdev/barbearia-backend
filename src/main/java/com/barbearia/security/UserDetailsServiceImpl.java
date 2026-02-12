@@ -13,16 +13,27 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         this.usuarioRepository = usuarioRepository;
     }
 
-   @Override
-public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+    @Override
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
 
-    var usuario = usuarioRepository.findByEmail(email)
-            .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado: " + email));
+        var usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado: " + email));
 
-    return org.springframework.security.core.userdetails.User.builder()
-            .username(usuario.getEmail())
-            .password(usuario.getSenha())
-            .roles("USER") // depois você pode melhorar isso
-            .build();
-} 
+        // Ajusta a role vinda do banco
+        // Ex: "ADMIN", "BARBEIRO", "USER"
+        String role = usuario.getRole();
+
+        if (role == null || role.isBlank()) {
+            role = "USER";
+        }
+
+        // remove "ROLE_" caso venha assim do banco, e deixa só "ADMIN"
+        role = role.replace("ROLE_", "").trim();
+
+        return org.springframework.security.core.userdetails.User.builder()
+                .username(usuario.getEmail())
+                .password(usuario.getSenha())
+                .roles(role) // <-- AGORA usa a role real do usuário
+                .build();
+    }
 }

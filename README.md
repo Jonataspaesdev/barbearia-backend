@@ -1,4 +1,4 @@
-# 💈 Sistema de Barbearia API
+<!--# 💈 Sistema de Barbearia API-->
 
 API REST desenvolvida em **Spring Boot 3** para gerenciamento completo de uma barbearia.
 
