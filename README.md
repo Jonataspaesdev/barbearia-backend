@@ -1,17 +1,56 @@
+Perfeito 👊
+Vou te entregar um README atualizado e profissional, já incluindo:
+
+✅ Pagamentos
+
+✅ Relatório financeiro
+
+✅ Soft delete de barbeiro
+
+✅ Reativação
+
+✅ Regras de negócio
+
+✅ Estrutura organizada
+
+Você pode copiar e substituir tudo no seu README.md.
+
 💈 Sistema de Barbearia - API REST
 
-API REST desenvolvida em Spring Boot 3 para gerenciamento completo de uma barbearia (clientes, serviços, barbeiros e agendamentos), com autenticação JWT e documentação via Swagger.
+API REST desenvolvida em Spring Boot 3 para gerenciamento completo de uma barbearia:
+
+👥 Clientes
+
+✂️ Serviços
+
+💈 Barbeiros
+
+📅 Agendamentos
+
+💳 Pagamentos
+
+📊 Relatório Financeiro
+
+Com autenticação JWT (Stateless) e documentação via Swagger (OpenAPI).
 
 🚀 Tecnologias Utilizadas
 
 Java 17
+
 Spring Boot 3
+
 Spring Security
+
 JWT (Autenticação Stateless)
+
 Spring Data JPA
+
 PostgreSQL
+
 Swagger (OpenAPI)
+
 Maven
+
 🔐 Autenticação (JWT)
 
 A API utiliza autenticação via JWT Token.
@@ -19,15 +58,21 @@ A API utiliza autenticação via JWT Token.
 O login gera um token que deve ser enviado nos endpoints protegidos.
 
 🔑 Login
-
 Endpoint
-
 POST /auth/login
-Exemplo de requisição `json { "email": "admin@admin.com", "senha": "123456" }
-
+Exemplo de requisição
+{
+  "email": "admin@admin.com",
+  "senha": "123456"
+}
 Resposta
-
-{ "token": "SEU_TOKEN_AQUI", "email": "admin@admin.com", "nome": "Administrador", "role": "ROLE_ADMIN" } 🛡️ Como usar o Token no Swagger
+{
+  "token": "SEU_TOKEN_AQUI",
+  "email": "admin@admin.com",
+  "nome": "Administrador",
+  "role": "ROLE_ADMIN"
+}
+🛡️ Como usar o Token no Swagger
 
 Faça login em POST /auth/login
 
@@ -35,11 +80,9 @@ Copie o campo token
 
 Clique em Authorize
 
-Cole o token com o prefixo Bearer
+Cole o token com o prefixo:
 
-Exemplo:
-
-Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Bearer SEU_TOKEN_AQUI
 
 Clique em Authorize
 
@@ -55,7 +98,8 @@ Senha: 123456
 
 Role: ROLE_ADMIN
 
-📌 Funcionalidades Implementadas 👥 Clientes
+📌 Funcionalidades Implementadas
+👥 Clientes
 
 Criar cliente
 
@@ -67,21 +111,43 @@ Atualizar cliente
 
 Remover cliente
 
+Endpoints
+POST   /clientes
+GET    /clientes
+GET    /clientes/{id}
+PUT    /clientes/{id}
+DELETE /clientes/{id}
 ✂️ Serviços
 
-Criar serviço (somente ROLE_ADMIN, se sua segurança estiver assim)
+Criar serviço
 
-Listar serviços
+Listar serviços ativos
 
 Buscar serviço por ID
 
-Atualizar serviço (somente ROLE_ADMIN, se sua segurança estiver assim)
+Atualizar serviço
 
 Desativar serviço (soft delete)
 
+Regras:
+
+Nome obrigatório
+
+Nome não pode duplicar
+
+Preço > 0
+
+Duração > 0
+
+Endpoints
+POST   /servicos
+GET    /servicos
+GET    /servicos/{id}
+PUT    /servicos/{id}
+DELETE /servicos/{id}  (soft delete)
 💈 Barbeiros
 
-Criar barbeiro
+Criar barbeiro (cria automaticamente usuário ROLE_BARBEIRO)
 
 Listar barbeiros
 
@@ -89,22 +155,19 @@ Buscar barbeiro por ID
 
 Atualizar barbeiro
 
-Remover barbeiro
+Desativar barbeiro (soft delete)
 
-Vincular serviços ao barbeiro via servicoIds
+Reativar barbeiro
 
-Endpoints principais
+Vincular serviços via servicoIds
 
-POST /barbeiros
-
-GET /barbeiros
-
-GET /barbeiros/{id}
-
-PUT /barbeiros/{id}
-
-DELETE /barbeiros/{id}
-
+Endpoints
+POST   /barbeiros
+GET    /barbeiros
+GET    /barbeiros/{id}
+PUT    /barbeiros/{id}
+DELETE /barbeiros/{id}        (soft delete)
+PUT    /barbeiros/{id}/reativar
 📅 Agendamentos
 
 Criar agendamento
@@ -121,61 +184,88 @@ Cancelar agendamento
 
 Regras de negócio:
 
-Não permite agendar no passado
+❌ Não permite agendar no passado
 
-Não permite fora do horário de trabalho do barbeiro
+❌ Não permite fora do horário do barbeiro
 
-Não permite conflito de horário para o mesmo barbeiro (considerando duração do serviço)
+❌ Não permite conflito de horário (considerando duração do serviço)
 
-Endpoints principais
+✔ Ao pagar, o status vira CONCLUIDO automaticamente
 
-POST /agendamentos
-
-GET /agendamentos
-
-GET /agendamentos/cliente/{clienteId}
-
-GET /agendamentos/barbeiro/{barbeiroId}
-
-PUT /agendamentos/{id}
-
+Endpoints
+POST   /agendamentos
+GET    /agendamentos
+GET    /agendamentos/cliente/{clienteId}
+GET    /agendamentos/barbeiro/{barbeiroId}
+PUT    /agendamentos/{id}
 DELETE /agendamentos/{id}/cancelar
+💳 Pagamentos
 
-🔒 Controle de Acesso (resumo)
+Realizar pagamento de um agendamento
 
-Públicos:
+Marca automaticamente o agendamento como CONCLUIDO
 
+Impede pagamento duplicado
+
+Valida regras de negócio
+
+Endpoint
+POST /pagamentos
+Exemplo
+{
+  "agendamentoId": 2,
+  "valor": 35.0,
+  "formaPagamento": "PIX"
+}
+📊 Relatório Financeiro
+
+Relatório por período.
+
+Endpoint
+GET /pagamentos/relatorio?dataInicio=2026-02-01&dataFim=2026-02-28
+
+Retorna:
+
+Total faturado
+
+Quantidade de pagamentos
+
+Detalhamento
+
+🔒 Controle de Acesso (Resumo)
+Públicos
 /auth/**
-
 GET /servicos
+Protegidos (JWT obrigatório)
 
-POST /clientes (se estiver permitido na sua SecurityConfig)
+Clientes
 
-Protegidos (exemplos comuns):
+Barbeiros
 
-CRUD de serviços (ROLE_ADMIN)
+Agendamentos
 
-CRUD de barbeiros (ROLE_ADMIN ou autenticado, depende da sua regra)
+Pagamentos
 
-Agendamentos (autenticado; update/cancel pode depender de ROLE)
-
-Observação: as permissões exatas dependem da sua SecurityConfig.
+Permissões específicas dependem da sua SecurityConfig.
 
 📂 Estrutura do Projeto
-
 controller/
-
 service/
-
 repository/
-
 model/
-
 security/
-
 config/
-
-▶️ Como executar o projeto 1️⃣ Clonar o repositório git clone https://github.com/Jonataspaesdev/barbearia-backend.git 2️⃣ Entrar na pasta do projeto cd barbearia-backend 3️⃣ Executar mvn clean install mvn spring-boot:run 🌐 Acesso
+dto/
+exception/
+▶️ Como executar o projeto
+1️⃣ Clonar o repositório
+git clone https://github.com/Jonataspaesdev/barbearia-backend.git
+2️⃣ Entrar na pasta
+cd barbearia-backend
+3️⃣ Executar
+mvn clean install
+mvn spring-boot:run
+🌐 Acesso
 
 API: http://localhost:8080
 
@@ -183,4 +273,5 @@ Swagger: http://localhost:8080/swagger-ui/index.html
 
 📌 Autor
 
-Desenvolvido por Jonatas Paes Backend Developer | Java | Spring Boot
+Jonatas Paes
+Backend Developer | Java | Spring Boot
