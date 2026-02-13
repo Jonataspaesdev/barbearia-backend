@@ -9,10 +9,13 @@ import java.time.LocalDateTime;
 /**
  * Entidade Pagamento.
  * Registra o valor cobrado, forma de pagamento e data de cada atendimento concluído.
- * Vinculada ao Agendamento (OneToOne) para rastrear qual serviço foi pago.
+ * Vinculada ao Agendamento (OneToOne) para garantir 1 pagamento por agendamento.
  */
 @Entity
-@Table(name = "pagamentos")
+@Table(
+        name = "pagamentos",
+        uniqueConstraints = @UniqueConstraint(name = "uk_pagamento_agendamento", columnNames = "agendamento_id")
+)
 @Data
 @Builder
 @NoArgsConstructor
@@ -23,7 +26,8 @@ public class Pagamento {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    // 1 pagamento para 1 agendamento
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "agendamento_id", nullable = false, unique = true)
     private Agendamento agendamento;
 
@@ -31,7 +35,7 @@ public class Pagamento {
     private BigDecimal valorCobrado;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "forma_pagamento", nullable = false)
+    @Column(name = "forma_pagamento", nullable = false, length = 30)
     private FormaPagamento formaPagamento;
 
     @Column(name = "data_pagamento", nullable = false)
@@ -46,9 +50,8 @@ public class Pagamento {
     }
 
     // ============================================================
-    // Enum de formas de pagamento
+    // Enum de formas de pagamento (mantido aqui, do jeito que você pediu)
     // ============================================================
-
     public enum FormaPagamento {
         DINHEIRO, CARTAO_CREDITO, CARTAO_DEBITO, PIX
     }

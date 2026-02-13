@@ -1,6 +1,37 @@
 package com.barbearia.controller;
 
-import com.barbearia.dto.DTOs.*;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.barbearia.dto.DTOs.AgendamentoRequest;
+import com.barbearia.dto.DTOs.AgendamentoResponse;
+import com.barbearia.dto.DTOs.AgendamentoUpdateRequest;
+import com.barbearia.dto.DTOs.BarbeiroRequest;
+import com.barbearia.dto.DTOs.BarbeiroResponse;
+import com.barbearia.dto.DTOs.ClienteRequest;
+import com.barbearia.dto.DTOs.LoginRequest;
+import com.barbearia.dto.DTOs.LoginResponse;
+import com.barbearia.dto.DTOs.PagamentoRequest;
+import com.barbearia.dto.DTOs.PagamentoResponse;
+import com.barbearia.dto.DTOs.RelatorioFinanceiroResponse;
 import com.barbearia.model.Barbeiro;
 import com.barbearia.model.Cliente;
 import com.barbearia.model.Servico;
@@ -11,20 +42,11 @@ import com.barbearia.repository.UsuarioRepository;
 import com.barbearia.security.JwtUtil;
 import com.barbearia.service.AgendamentoService;
 import com.barbearia.service.ClienteService;
+import com.barbearia.service.PagamentoService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.ArrayList;
-import java.util.List;
 
 // =================================================================
 // AUTH CONTROLLER (SEM LOMBOK)
@@ -76,7 +98,7 @@ class AuthController {
 }
 
 // =================================================================
-// CLIENTE CONTROLLER (SEM LOMBOK) - usando ENTITY para compilar
+// CLIENTE CONTROLLER (SEM LOMBOK)
 // =================================================================
 
 @RestController
@@ -224,7 +246,7 @@ class ServicoController {
 }
 
 // =================================================================
-// BARBEIRO CONTROLLER (SEM LOMBOK) - CORRIGIDO (CRIA USUARIO)
+// BARBEIRO CONTROLLER (SEM LOMBOK) - CRIA USUARIO
 // =================================================================
 
 @RestController
@@ -253,7 +275,6 @@ class BarbeiroController {
     @Operation(summary = "Cria um novo barbeiro (cria Usuario ROLE_BARBEIRO automaticamente)")
     public ResponseEntity<BarbeiroResponse> criar(@Valid @RequestBody BarbeiroRequest request) {
 
-        // 1) Usuario obrigatório no Barbeiro (nullable=false). Então cria (ou reaproveita) aqui:
         Usuario usuario = usuarioRepository.findByEmail(request.getEmail()).orElse(null);
 
         if (usuario == null) {
@@ -261,21 +282,19 @@ class BarbeiroController {
             usuario.setNome(request.getNome());
             usuario.setEmail(request.getEmail());
             usuario.setRole("ROLE_BARBEIRO");
-            usuario.setSenha(passwordEncoder.encode("123456")); // senha padrão do barbeiro
+            usuario.setSenha(passwordEncoder.encode("123456"));
             usuario = usuarioRepository.save(usuario);
         }
 
-        // 2) Cria Barbeiro
         Barbeiro b = new Barbeiro();
         b.setNome(request.getNome());
         b.setEmail(request.getEmail());
         b.setTelefone(request.getTelefone());
         b.setHoraEntrada(request.getHoraEntrada());
         b.setHoraSaida(request.getHoraSaida());
-        b.setUsuario(usuario); // <<< ESSENCIAL
+        b.setUsuario(usuario);
         b.setAtivo(true);
 
-        // 3) Vincula serviços (opcional)
         if (request.getServicoIds() != null && !request.getServicoIds().isEmpty()) {
             List<Servico> servicos = servicoRepository.findAllById(request.getServicoIds());
             b.setServicos(new ArrayList<>(servicos));
@@ -283,7 +302,6 @@ class BarbeiroController {
 
         b = barbeiroRepository.save(b);
 
-        // 4) Response
         BarbeiroResponse resp = new BarbeiroResponse();
         resp.setId(b.getId());
         resp.setNome(b.getNome());
@@ -335,9 +353,6 @@ class BarbeiroController {
         if (request.getTelefone() != null) b.setTelefone(request.getTelefone());
         if (request.getHoraEntrada() != null) b.setHoraEntrada(request.getHoraEntrada());
         if (request.getHoraSaida() != null) b.setHoraSaida(request.getHoraSaida());
-
-        // Não recomendo trocar email, pois está ligado ao Usuario (OneToOne)
-        // Se quiser trocar, tem que atualizar Usuario também.
 
         if (request.getServicoIds() != null) {
             List<Servico> servicos = servicoRepository.findAllById(request.getServicoIds());
@@ -415,5 +430,38 @@ class AgendamentoController {
     public ResponseEntity<Void> cancelar(@PathVariable Long id) {
         agendamentoService.cancelar(id);
         return ResponseEntity.noContent().build();
+    }
+}
+
+// =================================================================
+// PAGAMENTO CONTROLLER (SEM LOMBOK) - PARA APARECER NO SWAGGER
+// =================================================================
+
+@RestController
+@RequestMapping("/pagamentos")
+@Tag(name = "Pagamentos", description = "Pagamento de agendamentos e relatório financeiro")
+class PagamentoController {
+
+    private final PagamentoService pagamentoService;
+
+    public PagamentoController(PagamentoService pagamentoService) {
+        this.pagamentoService = pagamentoService;
+    }
+
+    @PostMapping
+    @Operation(summary = "Paga um agendamento (e marca o agendamento como CONCLUIDO)")
+    public ResponseEntity<PagamentoResponse> pagar(@Valid @RequestBody PagamentoRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(pagamentoService.pagar(request));
+    }
+
+    @GetMapping("/relatorio")
+    @Operation(summary = "Relatório financeiro por período (dataInicio e dataFim)")
+    public ResponseEntity<RelatorioFinanceiroResponse> relatorio(
+            @RequestParam("dataInicio") String dataInicio,
+            @RequestParam("dataFim") String dataFim
+    ) {
+        LocalDate ini = LocalDate.parse(dataInicio);
+        LocalDate fim = LocalDate.parse(dataFim);
+        return ResponseEntity.ok(pagamentoService.relatorio(ini, fim));
     }
 }
