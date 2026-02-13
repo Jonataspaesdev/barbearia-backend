@@ -311,18 +311,21 @@ class BarbeiroController {
         return ResponseEntity.status(HttpStatus.CREATED).body(resp);
     }
 
+    // ✅ Lista SOMENTE barbeiros ativos (pra não confundir)
     @GetMapping
-    @Operation(summary = "Lista todos os barbeiros")
+    @Operation(summary = "Lista todos os barbeiros ativos")
     public ResponseEntity<List<BarbeiroResponse>> listar() {
 
-        List<BarbeiroResponse> lista = barbeiroRepository.findAll().stream().map(b -> {
-            BarbeiroResponse resp = new BarbeiroResponse();
-            resp.setId(b.getId());
-            resp.setNome(b.getNome());
-            resp.setEmail(b.getEmail());
-            resp.setTelefone(b.getTelefone());
-            return resp;
-        }).toList();
+        List<BarbeiroResponse> lista = barbeiroRepository.findAll().stream()
+                .filter(Barbeiro::isAtivo)
+                .map(b -> {
+                    BarbeiroResponse resp = new BarbeiroResponse();
+                    resp.setId(b.getId());
+                    resp.setNome(b.getNome());
+                    resp.setEmail(b.getEmail());
+                    resp.setTelefone(b.getTelefone());
+                    return resp;
+                }).toList();
 
         return ResponseEntity.ok(lista);
     }
