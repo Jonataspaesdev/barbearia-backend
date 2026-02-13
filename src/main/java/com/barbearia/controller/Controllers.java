@@ -20,6 +20,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -223,7 +224,7 @@ class ServicoController {
 }
 
 // =================================================================
-// BARBEIRO CONTROLLER (SEM LOMBOK)
+// BARBEIRO CONTROLLER (SEM LOMBOK) - CORRIGIDO (CRIA USUARIO)
 // =================================================================
 
 @RestController
@@ -233,34 +234,56 @@ class BarbeiroController {
 
     private final BarbeiroRepository barbeiroRepository;
     private final ServicoRepository servicoRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public BarbeiroController(BarbeiroRepository barbeiroRepository, ServicoRepository servicoRepository) {
+    public BarbeiroController(
+            BarbeiroRepository barbeiroRepository,
+            ServicoRepository servicoRepository,
+            UsuarioRepository usuarioRepository,
+            PasswordEncoder passwordEncoder
+    ) {
         this.barbeiroRepository = barbeiroRepository;
         this.servicoRepository = servicoRepository;
+        this.usuarioRepository = usuarioRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @PostMapping
-    @Operation(summary = "Cria um novo barbeiro")
+    @Operation(summary = "Cria um novo barbeiro (cria Usuario ROLE_BARBEIRO automaticamente)")
     public ResponseEntity<BarbeiroResponse> criar(@Valid @RequestBody BarbeiroRequest request) {
 
+        // 1) Usuario obrigatório no Barbeiro (nullable=false). Então cria (ou reaproveita) aqui:
+        Usuario usuario = usuarioRepository.findByEmail(request.getEmail()).orElse(null);
+
+        if (usuario == null) {
+            usuario = new Usuario();
+            usuario.setNome(request.getNome());
+            usuario.setEmail(request.getEmail());
+            usuario.setRole("ROLE_BARBEIRO");
+            usuario.setSenha(passwordEncoder.encode("123456")); // senha padrão do barbeiro
+            usuario = usuarioRepository.save(usuario);
+        }
+
+        // 2) Cria Barbeiro
         Barbeiro b = new Barbeiro();
         b.setNome(request.getNome());
         b.setEmail(request.getEmail());
         b.setTelefone(request.getTelefone());
         b.setHoraEntrada(request.getHoraEntrada());
         b.setHoraSaida(request.getHoraSaida());
+        b.setUsuario(usuario); // <<< ESSENCIAL
+        b.setAtivo(true);
 
+        // 3) Vincula serviços (opcional)
         if (request.getServicoIds() != null && !request.getServicoIds().isEmpty()) {
-            // pega os serviços existentes pelos IDs
             List<Servico> servicos = servicoRepository.findAllById(request.getServicoIds());
-
-            // tenta setar na entity
-            // (se seu Barbeiro tiver outro nome de setter, me manda o Barbeiro.java que eu ajusto)
             b.setServicos(new ArrayList<>(servicos));
         }
 
         b = barbeiroRepository.save(b);
 
+        // 4) Response
         BarbeiroResponse resp = new BarbeiroResponse();
         resp.setId(b.getId());
         resp.setNome(b.getNome());
@@ -309,10 +332,12 @@ class BarbeiroController {
         Barbeiro b = barbeiroRepository.findById(id).orElseThrow();
 
         if (request.getNome() != null) b.setNome(request.getNome());
-        if (request.getEmail() != null) b.setEmail(request.getEmail());
         if (request.getTelefone() != null) b.setTelefone(request.getTelefone());
         if (request.getHoraEntrada() != null) b.setHoraEntrada(request.getHoraEntrada());
         if (request.getHoraSaida() != null) b.setHoraSaida(request.getHoraSaida());
+
+        // Não recomendo trocar email, pois está ligado ao Usuario (OneToOne)
+        // Se quiser trocar, tem que atualizar Usuario também.
 
         if (request.getServicoIds() != null) {
             List<Servico> servicos = servicoRepository.findAllById(request.getServicoIds());
