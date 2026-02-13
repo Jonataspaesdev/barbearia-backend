@@ -4,6 +4,7 @@ import org.springframework.context.annotation.*;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.*;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -30,9 +31,16 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
+                // ✅ liga CORS (vai usar o CorsConfig que vamos criar)
+                .cors(Customizer.withDefaults())
+
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
                 .authorizeHttpRequests(auth -> auth
+                        // ✅ libera o "pré-flight" do navegador
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
                         // Auth
                         .requestMatchers("/auth/**").permitAll()
 
@@ -55,11 +63,15 @@ public class SecurityConfig {
 
                         // ✅ Agendamentos (ROLE_ADMIN ou ROLE_BARBEIRO)
                         .requestMatchers(HttpMethod.PUT, "/agendamentos/**")
-                            .hasAnyAuthority("ROLE_ADMIN", "ROLE_BARBEIRO")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_BARBEIRO")
 
                         // Resto precisa estar logado
                         .anyRequest().authenticated()
                 )
+
+                // (opcional mas recomendado)
+                .authenticationProvider(authProvider())
+
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
