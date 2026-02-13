@@ -329,9 +329,14 @@ class BarbeiroController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Busca barbeiro por ID")
-    public ResponseEntity<BarbeiroResponse> buscarPorId(@PathVariable Long id) {
+    public ResponseEntity<?> buscarPorId(@PathVariable Long id) {
 
-        Barbeiro b = barbeiroRepository.findById(id).orElseThrow();
+        Barbeiro b = barbeiroRepository.findById(id).orElse(null);
+
+        if (b == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Barbeiro não encontrado: " + id);
+        }
 
         BarbeiroResponse resp = new BarbeiroResponse();
         resp.setId(b.getId());
@@ -370,11 +375,40 @@ class BarbeiroController {
         return ResponseEntity.ok(resp);
     }
 
+    // ✅ SOFT DELETE (não apaga do banco)
     @DeleteMapping("/{id}")
-    @Operation(summary = "Remove barbeiro")
-    public ResponseEntity<Void> deletar(@PathVariable Long id) {
-        barbeiroRepository.deleteById(id);
+    @Operation(summary = "Desativa barbeiro (soft delete)")
+    public ResponseEntity<?> deletar(@PathVariable Long id) {
+
+        Barbeiro b = barbeiroRepository.findById(id).orElse(null);
+
+        if (b == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Barbeiro não encontrado: " + id);
+        }
+
+        b.setAtivo(false);
+        barbeiroRepository.save(b);
+
         return ResponseEntity.noContent().build();
+    }
+
+    // ✅ Reativar barbeiro
+    @PutMapping("/{id}/reativar")
+    @Operation(summary = "Reativa barbeiro desativado")
+    public ResponseEntity<?> reativar(@PathVariable Long id) {
+
+        Barbeiro b = barbeiroRepository.findById(id).orElse(null);
+
+        if (b == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Barbeiro não encontrado: " + id);
+        }
+
+        b.setAtivo(true);
+        barbeiroRepository.save(b);
+
+        return ResponseEntity.ok("Barbeiro reativado: " + id);
     }
 }
 
