@@ -1,32 +1,25 @@
 package com.barbearia.model;
 
 import jakarta.persistence.*;
-import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
  * Entidade Pagamento.
- * Registra o valor cobrado, forma de pagamento e data de cada atendimento concluído.
- * Vinculada ao Agendamento (OneToOne) para garantir 1 pagamento por agendamento.
+ * 1 pagamento por agendamento (unique).
  */
 @Entity
 @Table(
         name = "pagamentos",
         uniqueConstraints = @UniqueConstraint(name = "uk_pagamento_agendamento", columnNames = "agendamento_id")
 )
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class Pagamento {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 1 pagamento para 1 agendamento
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "agendamento_id", nullable = false, unique = true)
     private Agendamento agendamento;
@@ -49,9 +42,25 @@ public class Pagamento {
         if (dataPagamento == null) dataPagamento = LocalDateTime.now();
     }
 
-    // ============================================================
-    // Enum de formas de pagamento (mantido aqui, do jeito que você pediu)
-    // ============================================================
+    // ===== getters/setters =====
+    public Long getId() { return id; }
+
+    public Agendamento getAgendamento() { return agendamento; }
+    public void setAgendamento(Agendamento agendamento) { this.agendamento = agendamento; }
+
+    public BigDecimal getValorCobrado() { return valorCobrado; }
+    public void setValorCobrado(BigDecimal valorCobrado) { this.valorCobrado = valorCobrado; }
+
+    public FormaPagamento getFormaPagamento() { return formaPagamento; }
+    public void setFormaPagamento(FormaPagamento formaPagamento) { this.formaPagamento = formaPagamento; }
+
+    public LocalDateTime getDataPagamento() { return dataPagamento; }
+    public void setDataPagamento(LocalDateTime dataPagamento) { this.dataPagamento = dataPagamento; }
+
+    public String getObservacao() { return observacao; }
+    public void setObservacao(String observacao) { this.observacao = observacao; }
+
+    // ===== enum interno (do seu jeito) =====
     public enum FormaPagamento {
         DINHEIRO, CARTAO_CREDITO, CARTAO_DEBITO, PIX
     }

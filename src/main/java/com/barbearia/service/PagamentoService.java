@@ -1,22 +1,21 @@
 package com.barbearia.service;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.barbearia.dto.DTOs.PagamentoRequest;
 import com.barbearia.dto.DTOs.PagamentoResponse;
 import com.barbearia.dto.DTOs.RelatorioFinanceiroResponse;
 import com.barbearia.exception.BusinessException;
 import com.barbearia.exception.ResourceNotFoundException;
 import com.barbearia.model.Agendamento;
-import com.barbearia.model.Agendamento.StatusAgendamento;
 import com.barbearia.model.Pagamento;
+import com.barbearia.model.Agendamento.StatusAgendamento;
 import com.barbearia.repository.AgendamentoRepository;
 import com.barbearia.repository.PagamentoRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Service
 @Transactional
@@ -57,7 +56,7 @@ public class PagamentoService {
         if (pagamentoRepository.existsByAgendamentoId(agendamento.getId()))
             throw new BusinessException("Este agendamento já foi pago.");
 
-        // 4) converter String do DTO -> enum que está DENTRO do Pagamento
+        // 4) converter String -> enum
         Pagamento.FormaPagamento forma;
         try {
             forma = Pagamento.FormaPagamento.valueOf(request.getFormaPagamento().trim().toUpperCase());
@@ -67,16 +66,16 @@ public class PagamentoService {
 
         BigDecimal valorCobrado = BigDecimal.valueOf(request.getValor());
 
-        Pagamento pagamento = Pagamento.builder()
-                .agendamento(agendamento)
-                .valorCobrado(valorCobrado)
-                .formaPagamento(forma)
-                .dataPagamento(LocalDateTime.now())
-                .build();
+        // 5) cria pagamento (SEM builder)
+        Pagamento pagamento = new Pagamento();
+        pagamento.setAgendamento(agendamento);
+        pagamento.setValorCobrado(valorCobrado);
+        pagamento.setFormaPagamento(forma);
+        pagamento.setDataPagamento(LocalDateTime.now());
 
         pagamento = pagamentoRepository.save(pagamento);
 
-        // 5) ao pagar, agendamento vira CONCLUIDO
+        // 6) ao pagar, agendamento vira CONCLUIDO
         agendamento.setStatus(StatusAgendamento.CONCLUIDO);
         agendamentoRepository.save(agendamento);
 
