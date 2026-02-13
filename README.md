@@ -1,60 +1,33 @@
 💈 Sistema de Barbearia - API REST
 
-
 API REST desenvolvida em Spring Boot 3 para gerenciamento completo de uma barbearia (clientes, serviços, barbeiros e agendamentos), com autenticação JWT e documentação via Swagger.
 
+🚀 Tecnologias Utilizadas
 
----
-
-
-## 🚀 Tecnologias Utilizadas
-
-
-- Java 17
-- Spring Boot 3
-- Spring Security
-- JWT (Autenticação Stateless)
-- Spring Data JPA
-- PostgreSQL
-- Swagger (OpenAPI)
-- Maven
-
-
----
-
-
-## 🔐 Autenticação (JWT)
-
+Java 17
+Spring Boot 3
+Spring Security
+JWT (Autenticação Stateless)
+Spring Data JPA
+PostgreSQL
+Swagger (OpenAPI)
+Maven
+🔐 Autenticação (JWT)
 
 A API utiliza autenticação via JWT Token.
 
-
 O login gera um token que deve ser enviado nos endpoints protegidos.
 
+🔑 Login
 
-### 🔑 Login
+Endpoint
 
-
-**Endpoint**
-- `POST /auth/login`
-
-
-**Exemplo de requisição**
-```json
-{
-  "email": "admin@admin.com",
-  "senha": "123456"
-}
+POST /auth/login
+Exemplo de requisição `json { "email": "admin@admin.com", "senha": "123456" }
 
 Resposta
 
-{
-  "token": "SEU_TOKEN_AQUI",
-  "email": "admin@admin.com",
-  "nome": "Administrador",
-  "role": "ROLE_ADMIN"
-}
-🛡️ Como usar o Token no Swagger
+{ "token": "SEU_TOKEN_AQUI", "email": "admin@admin.com", "nome": "Administrador", "role": "ROLE_ADMIN" } 🛡️ Como usar o Token no Swagger
 
 Faça login em POST /auth/login
 
@@ -82,8 +55,7 @@ Senha: 123456
 
 Role: ROLE_ADMIN
 
-📌 Funcionalidades Implementadas
-👥 Clientes
+📌 Funcionalidades Implementadas 👥 Clientes
 
 Criar cliente
 
@@ -203,15 +175,7 @@ security/
 
 config/
 
-▶️ Como executar o projeto
-1️⃣ Clonar o repositório
-git clone https://github.com/Jonataspaesdev/barbearia-backend.git
-2️⃣ Entrar na pasta do projeto
-cd barbearia-backend
-3️⃣ Executar
-mvn clean install
-mvn spring-boot:run
-🌐 Acesso
+▶️ Como executar o projeto 1️⃣ Clonar o repositório git clone https://github.com/Jonataspaesdev/barbearia-backend.git 2️⃣ Entrar na pasta do projeto cd barbearia-backend 3️⃣ Executar mvn clean install mvn spring-boot:run 🌐 Acesso
 
 API: http://localhost:8080
 
@@ -219,5 +183,4 @@ Swagger: http://localhost:8080/swagger-ui/index.html
 
 📌 Autor
 
-Desenvolvido por Jonatas Paes
-Backend Developer | Java | Spring Boot
+Desenvolvido por Jonatas Paes Backend Developer | Java | Spring Boot
