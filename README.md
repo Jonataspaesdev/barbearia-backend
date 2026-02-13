@@ -1,263 +1,241 @@
-# 💈 Sistema de Barbearia - API REST
+Perfeito 👏🔥
+Vou te entregar ele organizado, profissional e pronto pra copiar e substituir inteiro seu README.md.
 
-API REST desenvolvida em **Spring Boot 3** para gerenciamento completo de uma barbearia:
+Só copiar tudo abaixo 👇
 
-- 👥 Clientes  
-- ✂️ Serviços  
-- 💈 Barbeiros  
-- 📅 Agendamentos  
-- 💳 Pagamentos  
-- 📊 Relatório Financeiro  
+💈 Sistema de Barbearia - API REST
 
-Com autenticação **JWT (Stateless)** e documentação via **Swagger (OpenAPI)**.
+API REST desenvolvida em Spring Boot 3 para gerenciamento completo de uma barbearia:
 
----
+👥 Clientes
 
-## 🚀 Tecnologias Utilizadas
+✂️ Serviços
 
-- Java 17  
-- Spring Boot 3  
-- Spring Security  
-- JWT (Autenticação Stateless)  
-- Spring Data JPA  
-- PostgreSQL  
-- Swagger (OpenAPI)  
-- Maven  
+💈 Barbeiros
 
----
+📅 Agendamentos
 
-## 🔐 Autenticação (JWT)
+💳 Pagamentos
 
-A API utiliza autenticação via **JWT Token**.
+📊 Relatório Financeiro
+
+Com autenticação JWT (Stateless) e documentação via Swagger (OpenAPI).
+
+🚀 Tecnologias Utilizadas
+
+Java 17
+
+Spring Boot 3
+
+Spring Security
+
+JWT (Autenticação Stateless)
+
+Spring Data JPA
+
+PostgreSQL
+
+Swagger (OpenAPI)
+
+Maven
+
+🔐 Autenticação (JWT)
+
+A API utiliza autenticação via JWT Token.
 
 O login gera um token que deve ser enviado nos endpoints protegidos.
 
-### 🔑 Login
-
-**Endpoint**
-
-```
+🔑 Login
+Endpoint
 POST /auth/login
-```
-
-### 📥 Exemplo de Requisição
-
-```json
+📥 Exemplo de Requisição
 {
   "email": "admin@admin.com",
   "senha": "123456"
 }
-```
-
-### 📤 Resposta
-
-```json
+📤 Resposta
 {
   "token": "SEU_TOKEN_AQUI",
   "email": "admin@admin.com",
   "nome": "Administrador",
   "role": "ROLE_ADMIN"
 }
-```
+🛡️ Como usar o Token no Swagger
 
----
+Faça login em POST /auth/login
 
-## 🛡️ Como usar o Token no Swagger
+Copie o campo token
 
-1. Faça login em `POST /auth/login`
-2. Copie o campo `token`
-3. Clique em **Authorize**
-4. Cole o token com o prefixo:
+Clique em Authorize
 
-```
+Cole o token com o prefixo:
+
 Bearer SEU_TOKEN_AQUI
-```
 
-5. Clique em **Authorize**
+Clique em Authorize
 
 Agora você pode acessar endpoints protegidos.
 
----
-
-## 👤 Usuário Administrador Padrão
+👤 Usuário Administrador Padrão
 
 Ao iniciar o sistema, um usuário administrador é criado automaticamente:
 
-- **Email:** admin@admin.com  
-- **Senha:** 123456  
-- **Role:** ROLE_ADMIN  
+Email: admin@admin.com
 
----
+Senha: 123456
 
-# 📌 Funcionalidades Implementadas
+Role: ROLE_ADMIN
 
----
+📌 Funcionalidades Implementadas
+👥 Clientes
 
-## 👥 Clientes
+Criar cliente
 
-- Criar cliente  
-- Listar clientes  
-- Buscar cliente por ID  
-- Atualizar cliente  
-- Remover cliente  
+Listar clientes
 
-### Endpoints
+Buscar cliente por ID
 
-```
+Atualizar cliente
+
+Remover cliente
+
+Endpoints
 POST   /clientes
 GET    /clientes
 GET    /clientes/{id}
 PUT    /clientes/{id}
 DELETE /clientes/{id}
-```
+✂️ Serviços
 
----
+Criar serviço
 
-## ✂️ Serviços
+Listar serviços ativos
 
-- Criar serviço  
-- Listar serviços ativos  
-- Buscar serviço por ID  
-- Atualizar serviço  
-- Desativar serviço (soft delete)  
+Buscar serviço por ID
 
-### Regras
+Atualizar serviço
 
-- Nome obrigatório  
-- Nome não pode duplicar  
-- Preço > 0  
-- Duração > 0  
+Desativar serviço (soft delete)
 
-### Endpoints
+Regras
 
-```
+Nome obrigatório
+
+Nome não pode duplicar
+
+Preço > 0
+
+Duração > 0
+
+Endpoints
 POST   /servicos
 GET    /servicos
 GET    /servicos/{id}
 PUT    /servicos/{id}
 DELETE /servicos/{id}   (soft delete)
-```
+💈 Barbeiros
 
----
+Criar barbeiro (cria automaticamente usuário ROLE_BARBEIRO)
 
-## 💈 Barbeiros
+Listar barbeiros
 
-- Criar barbeiro (cria automaticamente usuário ROLE_BARBEIRO)  
-- Listar barbeiros  
-- Buscar barbeiro por ID  
-- Atualizar barbeiro  
-- Desativar barbeiro (soft delete)  
-- Reativar barbeiro  
-- Vincular serviços via `servicoIds`  
+Buscar barbeiro por ID
 
-### Endpoints
+Atualizar barbeiro
 
-```
+Desativar barbeiro (soft delete)
+
+Reativar barbeiro
+
+Vincular serviços via servicoIds
+
+Endpoints
 POST   /barbeiros
 GET    /barbeiros
 GET    /barbeiros/{id}
 PUT    /barbeiros/{id}
-DELETE /barbeiros/{id}          (soft delete)
+DELETE /barbeiros/{id}
 PUT    /barbeiros/{id}/reativar
-```
+📅 Agendamentos
 
----
+Criar agendamento
 
-## 📅 Agendamentos
+Listar todos
 
-- Criar agendamento  
-- Listar todos  
-- Listar por cliente  
-- Listar por barbeiro  
-- Atualizar (dataHora/status/observacao)  
-- Cancelar agendamento  
+Listar por cliente
 
-### Regras de Negócio
+Listar por barbeiro
 
-❌ Não permite agendar no passado  
-❌ Não permite fora do horário do barbeiro  
-❌ Não permite conflito de horário (considerando duração do serviço)  
-✔ Ao realizar o pagamento, o status do agendamento é atualizado automaticamente para **CONCLUIDO**
+Atualizar (dataHora/status/observacao)
 
-### Endpoints
+Cancelar agendamento
 
-```
+Regras de Negócio
+
+❌ Não permite agendar no passado
+
+❌ Não permite fora do horário do barbeiro
+
+❌ Não permite conflito de horário (considerando duração do serviço)
+
+✔ Ao realizar pagamento, o status do agendamento é atualizado automaticamente para CONCLUIDO
+
+Endpoints
 POST   /agendamentos
 GET    /agendamentos
 GET    /agendamentos/cliente/{clienteId}
 GET    /agendamentos/barbeiro/{barbeiroId}
 PUT    /agendamentos/{id}
 DELETE /agendamentos/{id}/cancelar
-```
+💳 Pagamentos
 
----
+Realizar pagamento de um agendamento
 
-## 💳 Pagamentos
+Marca automaticamente o agendamento como CONCLUIDO
 
-- Realizar pagamento de um agendamento  
-- Marca automaticamente o agendamento como **CONCLUIDO**  
-- Impede pagamento duplicado  
-- Valida regras de negócio  
+Impede pagamento duplicado
 
-### Endpoint
+Valida regras de negócio
 
-```
+Endpoint
 POST /pagamentos
-```
-
-### Exemplo
-
-```json
+Exemplo
 {
   "agendamentoId": 2,
   "valor": 35.0,
   "formaPagamento": "PIX"
 }
-```
-
----
-
-## 📊 Relatório Financeiro
+📊 Relatório Financeiro
 
 Relatório financeiro por período.
 
-### Endpoint
-
-```
+Endpoint
 GET /pagamentos/relatorio?dataInicio=2026-02-01&dataFim=2026-02-28
-```
+Retorna
 
-### Retorna
+Total faturado
 
-- Total faturado  
-- Quantidade de pagamentos  
-- Período consultado  
+Quantidade de pagamentos
 
----
+Período consultado
 
-# 🔒 Controle de Acesso (Resumo)
-
-### Públicos
-
-```
+🔒 Controle de Acesso (Resumo)
+Públicos
 /auth/**
 GET /servicos
-```
+Protegidos (JWT obrigatório)
 
-### Protegidos (JWT obrigatório)
+Clientes
 
-- Clientes  
-- Barbeiros  
-- Agendamentos  
-- Pagamentos  
+Barbeiros
 
-> Permissões específicas dependem da sua `SecurityConfig`.
+Agendamentos
 
----
+Pagamentos
 
-# 📂 Estrutura do Projeto
+Permissões específicas dependem da SecurityConfig.
 
-```
+📂 Estrutura do Projeto
 controller/
 service/
 repository/
@@ -266,48 +244,27 @@ security/
 config/
 dto/
 exception/
-```
-
----
-
-# ▶️ Como Executar o Projeto
-
-### 1️⃣ Clonar o repositório
-
-```
+▶️ Como Executar o Projeto
+1️⃣ Clonar o repositório
 git clone https://github.com/Jonataspaesdev/barbearia-backend.git
-```
-
-### 2️⃣ Entrar na pasta
-
-```
+2️⃣ Entrar na pasta
 cd barbearia-backend
-```
-
-### 3️⃣ Executar
-
-```
+3️⃣ Executar
 mvn clean install
 mvn spring-boot:run
-```
+🌐 Acesso
 
----
+API: http://localhost:8080
 
-# 🌐 Acesso
+Swagger: http://localhost:8080/swagger-ui/index.html
 
-- API: http://localhost:8080  
-- Swagger: http://localhost:8080/swagger-ui/index.html  
+📈 Status do Projeto
 
----
+✔ Backend funcional
+🚧 Frontend em desenvolvimento
 
-# 📈 Status do Projeto
+👨‍💻 Autor
 
-✔ Backend funcional  
-🚧 Frontend em desenvolvimento  
-
----
-
-# 📌 Autor
-
-**Jonatas Paes**  
+Jonatas Paes
 Backend Developer | Java | Spring Boot
+
