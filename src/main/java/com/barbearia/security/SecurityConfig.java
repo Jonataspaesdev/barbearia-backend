@@ -31,37 +31,45 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
-                // ✅ liga CORS (vai usar o CorsConfig que vamos criar)
                 .cors(Customizer.withDefaults())
-
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 .authorizeHttpRequests(auth -> auth
-                        // ✅ libera o "pré-flight" do navegador
+                        // ✅ libera o pré-flight do navegador
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Auth
+                        // ✅ Auth público
                         .requestMatchers("/auth/**").permitAll()
 
-                        // Swagger
+                        // ✅ Swagger público
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
 
-                        // Clientes
-                        .requestMatchers(HttpMethod.POST, "/clientes").permitAll()
-
-                        // Serviços (listar público)
+                        // ✅ Serviços (listar público)
                         .requestMatchers(HttpMethod.GET, "/servicos").permitAll()
 
-                        // ✅ Serviços (somente ROLE_ADMIN)
+                        // ✅ Serviços (somente ADMIN)
                         .requestMatchers(HttpMethod.POST, "/servicos").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/servicos/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/servicos/**").hasAuthority("ROLE_ADMIN")
 
-                        // ✅ Barbeiros (somente ROLE_ADMIN)
+                        // ✅ Barbeiros (somente ADMIN)
                         .requestMatchers("/barbeiros/**").hasAuthority("ROLE_ADMIN")
 
-                        // ✅ Agendamentos (ROLE_ADMIN ou ROLE_BARBEIRO)
+                        // ✅ Clientes (somente ADMIN)
+                        .requestMatchers(HttpMethod.GET, "/clientes/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/clientes").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/clientes/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/clientes/**").hasAuthority("ROLE_ADMIN")
+
+                        // ✅ Agendamentos
+                        // - Cliente logado pode criar e ver os próprios (vamos reforçar no Controller também)
+                        .requestMatchers(HttpMethod.POST, "/agendamentos").hasAnyAuthority("ROLE_CLIENTE", "ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/agendamentos/cliente/**").hasAnyAuthority("ROLE_CLIENTE", "ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/agendamentos").hasAnyAuthority("ROLE_ADMIN", "ROLE_BARBEIRO")
+                        .requestMatchers(HttpMethod.GET, "/agendamentos/barbeiro/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_BARBEIRO")
+
+                        // ✅ Atualizar agendamento (ADMIN ou BARBEIRO) - mantém sua regra
                         .requestMatchers(HttpMethod.PUT, "/agendamentos/**")
                         .hasAnyAuthority("ROLE_ADMIN", "ROLE_BARBEIRO")
 
@@ -69,9 +77,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
 
-                // (opcional mas recomendado)
                 .authenticationProvider(authProvider())
-
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }

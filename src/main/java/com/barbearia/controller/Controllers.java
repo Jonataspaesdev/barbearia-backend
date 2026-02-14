@@ -8,18 +8,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.*;
 
 import com.barbearia.dto.DTOs.AgendamentoRequest;
 import com.barbearia.dto.DTOs.AgendamentoResponse;
@@ -32,13 +27,19 @@ import com.barbearia.dto.DTOs.LoginResponse;
 import com.barbearia.dto.DTOs.PagamentoRequest;
 import com.barbearia.dto.DTOs.PagamentoResponse;
 import com.barbearia.dto.DTOs.RelatorioFinanceiroResponse;
+import com.barbearia.dto.DTOs.RegisterRequest;
+import com.barbearia.dto.DTOs.RegisterResponse;
+
 import com.barbearia.model.Barbeiro;
 import com.barbearia.model.Cliente;
 import com.barbearia.model.Servico;
 import com.barbearia.model.Usuario;
+
 import com.barbearia.repository.BarbeiroRepository;
+import com.barbearia.repository.ClienteRepository;
 import com.barbearia.repository.ServicoRepository;
 import com.barbearia.repository.UsuarioRepository;
+
 import com.barbearia.security.JwtUtil;
 import com.barbearia.service.AgendamentoService;
 import com.barbearia.service.ClienteService;
@@ -61,17 +62,23 @@ class AuthController {
     private final UserDetailsService userDetailsService;
     private final JwtUtil jwtUtil;
     private final UsuarioRepository usuarioRepository;
+    private final ClienteRepository clienteRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public AuthController(
             AuthenticationManager authenticationManager,
             UserDetailsService userDetailsService,
             JwtUtil jwtUtil,
-            UsuarioRepository usuarioRepository
+            UsuarioRepository usuarioRepository,
+            ClienteRepository clienteRepository,
+            PasswordEncoder passwordEncoder
     ) {
         this.authenticationManager = authenticationManager;
         this.userDetailsService = userDetailsService;
         this.jwtUtil = jwtUtil;
         this.usuarioRepository = usuarioRepository;
+        this.clienteRepository = clienteRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @PostMapping("/login")
@@ -94,6 +101,49 @@ class AuthController {
         response.setRole(usuario.getRole());
 
         return ResponseEntity.ok(response);
+    }
+
+    // ✅ NOVO: REGISTER DE CLIENTE
+    @PostMapping("/register")
+    @Transactional
+    @Operation(summary = "Cadastro de conta de cliente (cria Usuario + Cliente)")
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
+
+        // 1) valida email duplicado
+        if (usuarioRepository.existsByEmail(request.getEmail())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body("Email já cadastrado. Use outro email ou faça login.");
+        }
+        if (clienteRepository.existsByEmail(request.getEmail())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body("Email já cadastrado como cliente. Use outro email ou faça login.");
+        }
+
+        // 2) cria Usuario ROLE_CLIENTE com senha BCrypt
+        Usuario usuario = new Usuario();
+        usuario.setNome(request.getNome());
+        usuario.setEmail(request.getEmail());
+        usuario.setRole("ROLE_CLIENTE");
+        usuario.setSenha(passwordEncoder.encode(request.getSenha()));
+        usuario = usuarioRepository.save(usuario);
+
+        // 3) cria Cliente e liga ao Usuario (OneToOne obrigatório)
+        Cliente cliente = new Cliente();
+        cliente.setUsuario(usuario);
+        cliente.setNome(request.getNome());
+        cliente.setEmail(request.getEmail());
+        cliente.setTelefone(request.getTelefone());
+        cliente = clienteRepository.save(cliente);
+
+        // 4) resposta
+        RegisterResponse resp = new RegisterResponse();
+        resp.setUsuarioId(usuario.getId());
+        resp.setClienteId(cliente.getId());
+        resp.setNome(usuario.getNome());
+        resp.setEmail(usuario.getEmail());
+        resp.setRole(usuario.getRole());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(resp);
     }
 }
 
@@ -311,7 +361,6 @@ class BarbeiroController {
         return ResponseEntity.status(HttpStatus.CREATED).body(resp);
     }
 
-    // ✅ Lista SOMENTE barbeiros ativos (pra não confundir)
     @GetMapping
     @Operation(summary = "Lista todos os barbeiros ativos")
     public ResponseEntity<List<BarbeiroResponse>> listar() {
@@ -378,7 +427,6 @@ class BarbeiroController {
         return ResponseEntity.ok(resp);
     }
 
-    // ✅ SOFT DELETE (não apaga do banco)
     @DeleteMapping("/{id}")
     @Operation(summary = "Desativa barbeiro (soft delete)")
     public ResponseEntity<?> deletar(@PathVariable Long id) {
@@ -396,7 +444,6 @@ class BarbeiroController {
         return ResponseEntity.noContent().build();
     }
 
-    // ✅ Reativar barbeiro
     @PutMapping("/{id}/reativar")
     @Operation(summary = "Reativa barbeiro desativado")
     public ResponseEntity<?> reativar(@PathVariable Long id) {
@@ -425,16 +472,45 @@ class BarbeiroController {
 class AgendamentoController {
 
     private final AgendamentoService agendamentoService;
+    private final ClienteRepository clienteRepository;
 
-    public AgendamentoController(AgendamentoService agendamentoService) {
+    public AgendamentoController(AgendamentoService agendamentoService, ClienteRepository clienteRepository) {
         this.agendamentoService = agendamentoService;
+        this.clienteRepository = clienteRepository;
+    }
+
+    private boolean temRole(String role) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getAuthorities().stream().anyMatch(a -> role.equals(a.getAuthority()));
+    }
+
+    private String emailLogado() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return (auth != null) ? auth.getName() : null; // geralmente email (username)
+    }
+
+    private Cliente clienteDoUsuarioLogado() {
+        String email = emailLogado();
+        if (email == null) return null;
+
+        return clienteRepository.findByEmail(email).orElse(null);
     }
 
     @PostMapping
     @Operation(summary = "Cria um novo agendamento")
-    public ResponseEntity<AgendamentoResponse> criar(@Valid @RequestBody AgendamentoRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(agendamentoService.criar(request));
+    public ResponseEntity<?> criar(@Valid @RequestBody AgendamentoRequest request) {
+
+        // ✅ Se for CLIENTE, ignora o clienteId do body e usa o do token
+        if (temRole("ROLE_CLIENTE")) {
+            Cliente cliente = clienteDoUsuarioLogado();
+            if (cliente == null) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body("Conta de cliente não encontrada para o usuário logado.");
+            }
+            request.setClienteId(cliente.getId());
+        }
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(agendamentoService.criar(request));
     }
 
     @GetMapping
@@ -445,7 +521,21 @@ class AgendamentoController {
 
     @GetMapping("/cliente/{clienteId}")
     @Operation(summary = "Lista agendamentos por cliente")
-    public ResponseEntity<List<AgendamentoResponse>> listarPorCliente(@PathVariable Long clienteId) {
+    public ResponseEntity<?> listarPorCliente(@PathVariable Long clienteId) {
+
+        // ✅ Se for CLIENTE, só pode ver os próprios
+        if (temRole("ROLE_CLIENTE")) {
+            Cliente cliente = clienteDoUsuarioLogado();
+            if (cliente == null) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body("Conta de cliente não encontrada para o usuário logado.");
+            }
+            if (!cliente.getId().equals(clienteId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body("Você só pode ver seus próprios agendamentos.");
+            }
+        }
+
         return ResponseEntity.ok(agendamentoService.listarPorCliente(clienteId));
     }
 

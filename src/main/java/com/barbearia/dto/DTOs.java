@@ -53,6 +53,58 @@ public class DTOs {
         public void setRole(String role) { this.role = role; }
     }
 
+    // ✅ NOVO: REGISTER (CLIENTE)
+    public static class RegisterRequest {
+
+        @NotBlank
+        private String nome;
+
+        @NotBlank
+        @Email
+        private String email;
+
+        private String telefone;
+
+        @NotBlank
+        private String senha;
+
+        public RegisterRequest() {}
+
+        public String getNome() { return nome; }
+        public String getEmail() { return email; }
+        public String getTelefone() { return telefone; }
+        public String getSenha() { return senha; }
+
+        public void setNome(String nome) { this.nome = nome; }
+        public void setEmail(String email) { this.email = email; }
+        public void setTelefone(String telefone) { this.telefone = telefone; }
+        public void setSenha(String senha) { this.senha = senha; }
+    }
+
+    // ✅ NOVO: resposta do register
+    public static class RegisterResponse {
+
+        private Long usuarioId;
+        private Long clienteId;
+        private String nome;
+        private String email;
+        private String role;
+
+        public RegisterResponse() {}
+
+        public Long getUsuarioId() { return usuarioId; }
+        public Long getClienteId() { return clienteId; }
+        public String getNome() { return nome; }
+        public String getEmail() { return email; }
+        public String getRole() { return role; }
+
+        public void setUsuarioId(Long usuarioId) { this.usuarioId = usuarioId; }
+        public void setClienteId(Long clienteId) { this.clienteId = clienteId; }
+        public void setNome(String nome) { this.nome = nome; }
+        public void setEmail(String email) { this.email = email; }
+        public void setRole(String role) { this.role = role; }
+    }
+
     // ==========================
     // CLIENTE
     // ==========================
