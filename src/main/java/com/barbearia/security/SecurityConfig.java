@@ -36,13 +36,9 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 .authorizeHttpRequests(auth -> auth
-                        // ✅ libera o pré-flight do navegador
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // ✅ Auth público
                         .requestMatchers("/auth/**").permitAll()
-
-                        // ✅ Swagger público
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
 
                         // ✅ Serviços (listar público)
@@ -53,8 +49,15 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/servicos/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/servicos/**").hasAuthority("ROLE_ADMIN")
 
+                        // ✅ Barbeiros (CLIENTE e ADMIN)
+                        // IMPORTANTE: incluir /barbeiros (lista) e /barbeiros/** (detalhe)
+                        .requestMatchers(HttpMethod.GET, "/barbeiros", "/barbeiros/**")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_CLIENTE")
+
                         // ✅ Barbeiros (somente ADMIN)
-                        .requestMatchers("/barbeiros/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/barbeiros/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/barbeiros/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/barbeiros/**").hasAuthority("ROLE_ADMIN")
 
                         // ✅ Clientes (somente ADMIN)
                         .requestMatchers(HttpMethod.GET, "/clientes/**").hasAuthority("ROLE_ADMIN")
@@ -63,17 +66,18 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/clientes/**").hasAuthority("ROLE_ADMIN")
 
                         // ✅ Agendamentos
-                        // - Cliente logado pode criar e ver os próprios (vamos reforçar no Controller também)
                         .requestMatchers(HttpMethod.POST, "/agendamentos").hasAnyAuthority("ROLE_CLIENTE", "ROLE_ADMIN")
                         .requestMatchers(HttpMethod.GET, "/agendamentos/cliente/**").hasAnyAuthority("ROLE_CLIENTE", "ROLE_ADMIN")
+
+                        // (se você já criou)
+                        .requestMatchers(HttpMethod.GET, "/agendamentos/disponibilidade")
+                        .hasAnyAuthority("ROLE_CLIENTE", "ROLE_ADMIN")
+
                         .requestMatchers(HttpMethod.GET, "/agendamentos").hasAnyAuthority("ROLE_ADMIN", "ROLE_BARBEIRO")
                         .requestMatchers(HttpMethod.GET, "/agendamentos/barbeiro/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_BARBEIRO")
 
-                        // ✅ Atualizar agendamento (ADMIN ou BARBEIRO) - mantém sua regra
-                        .requestMatchers(HttpMethod.PUT, "/agendamentos/**")
-                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_BARBEIRO")
+                        .requestMatchers(HttpMethod.PUT, "/agendamentos/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_BARBEIRO")
 
-                        // Resto precisa estar logado
                         .anyRequest().authenticated()
                 )
 

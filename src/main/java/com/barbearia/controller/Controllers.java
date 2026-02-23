@@ -9,12 +9,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+
+import org.springframework.format.annotation.DateTimeFormat;
 
 import com.barbearia.dto.DTOs.AgendamentoRequest;
 import com.barbearia.dto.DTOs.AgendamentoResponse;
@@ -29,6 +31,7 @@ import com.barbearia.dto.DTOs.PagamentoResponse;
 import com.barbearia.dto.DTOs.RelatorioFinanceiroResponse;
 import com.barbearia.dto.DTOs.RegisterRequest;
 import com.barbearia.dto.DTOs.RegisterResponse;
+import com.barbearia.dto.DTOs.DisponibilidadeResponse;
 
 import com.barbearia.model.Barbeiro;
 import com.barbearia.model.Cliente;
@@ -557,6 +560,19 @@ class AgendamentoController {
     public ResponseEntity<Void> cancelar(@PathVariable Long id) {
         agendamentoService.cancelar(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // ==========================
+    // ✅ NOVO: DISPONIBILIDADE
+    // GET /agendamentos/disponibilidade?barbeiroId=1&data=2026-02-21
+    // ==========================
+    @GetMapping("/disponibilidade")
+    @Operation(summary = "Retorna horários ocupados do barbeiro em um dia (sem dados sensíveis)")
+    public ResponseEntity<DisponibilidadeResponse> disponibilidade(
+            @RequestParam Long barbeiroId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data
+    ) {
+        return ResponseEntity.ok(agendamentoService.getDisponibilidade(barbeiroId, data));
     }
 }
 

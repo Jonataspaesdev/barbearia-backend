@@ -17,8 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,6 +26,9 @@ import java.util.stream.Collectors;
 public class AgendamentoService {
 
     private static final Logger log = LoggerFactory.getLogger(AgendamentoService.class);
+
+    private static final int DURACAO_FIXA_MIN = 30;
+    private static final DateTimeFormatter HORA_FMT = DateTimeFormatter.ofPattern("HH:mm");
 
     private final AgendamentoRepository agendamentoRepository;
     private final ClienteRepository clienteRepository;
@@ -148,6 +151,76 @@ public class AgendamentoService {
                 .collect(Collectors.toList());
     }
 
+    // ==========================
+    // ✅ NOVO: DISPONIBILIDADE (CLIENTE/ADMIN)
+    // ==========================
+    @Transactional(readOnly = true)
+    public DisponibilidadeResponse getDisponibilidade(Long barbeiroId, LocalDate data) {
+
+        if (barbeiroId == null) throw new BusinessException("barbeiroId é obrigatório.");
+        if (data == null) throw new BusinessException("data é obrigatória (formato YYYY-MM-DD).");
+
+        Barbeiro barbeiro = barbeiroRepository.findById(barbeiroId)
+                .orElseThrow(() -> new ResourceNotFoundException("Barbeiro não encontrado: " + barbeiroId));
+
+        LocalTime horaEntrada = barbeiro.getHoraEntrada();
+        LocalTime horaSaida = barbeiro.getHoraSaida();
+
+        if (horaEntrada == null || horaSaida == null) {
+            throw new BusinessException("Barbeiro sem horário de trabalho configurado (horaEntrada/horaSaida).");
+        }
+
+        LocalDateTime inicioDia = data.atStartOfDay();
+        LocalDateTime fimDia = data.plusDays(1).atStartOfDay();
+
+        // pegamos apenas AGENDADO para bloquear horários ocupados
+        List<Agendamento> agendados = agendamentoRepository.findAgendadosByBarbeiroAndDia(barbeiroId, inicioDia, fimDia);
+
+        // usamos Set para não repetir e já ordenar depois
+        Set<String> ocupados = new HashSet<>();
+
+        for (Agendamento a : agendados) {
+            if (a.getDataHora() == null) continue;
+
+            LocalDateTime aInicio = a.getDataHora();
+
+            // Se sua entidade calcula dataHoraFim certinho, usamos ela.
+            // Se vier null (por algum motivo), calculamos pelo serviço.
+            LocalDateTime aFim = a.getDataHoraFim();
+            if (aFim == null) {
+                if (a.getServico() == null || a.getServico().getDuracaoMinutos() == null) continue;
+                aFim = aInicio.plusMinutes(a.getServico().getDuracaoMinutos());
+            }
+
+            // slot começa em aInicio e vai de 30 em 30 até antes do fim
+            LocalDateTime slot = aInicio;
+            while (slot.isBefore(aFim)) {
+                LocalTime t = slot.toLocalTime();
+
+                // respeita expediente do barbeiro
+                if (!t.isBefore(horaEntrada) && t.isBefore(horaSaida)) {
+                    ocupados.add(t.format(HORA_FMT));
+                }
+
+                slot = slot.plusMinutes(DURACAO_FIXA_MIN);
+            }
+        }
+
+        List<String> ocupadosOrdenados = ocupados.stream()
+                .sorted()
+                .collect(Collectors.toList());
+
+        DisponibilidadeResponse resp = new DisponibilidadeResponse();
+        resp.setBarbeiroId(barbeiroId);
+        resp.setData(data);
+        resp.setDuracaoMin(DURACAO_FIXA_MIN);
+        resp.setHoraEntrada(horaEntrada);
+        resp.setHoraSaida(horaSaida);
+        resp.setOcupados(ocupadosOrdenados);
+
+        return resp;
+    }
+
     private void validarHorarioTrabalho(Barbeiro barbeiro, LocalDateTime inicio, LocalDateTime fim) {
 
         LocalTime horaInicio = inicio.toLocalTime();
@@ -174,10 +247,19 @@ public class AgendamentoService {
 
         boolean temConflito = agendamentosDoDia.stream()
                 .filter(a -> agendamentoIdExcluir == null || !a.getId().equals(agendamentoIdExcluir))
+                .filter(a -> a.getStatus() == StatusAgendamento.AGENDADO) // evita conflito com CANCELADO/CONCLUIDO
                 .anyMatch(a -> {
                     LocalDateTime aInicio = a.getDataHora();
                     LocalDateTime aFim = a.getDataHoraFim();
-                    return aInicio != null && aFim != null
+
+                    if (aInicio == null) return false;
+
+                    // fallback se dataHoraFim vier null
+                    if (aFim == null && a.getServico() != null && a.getServico().getDuracaoMinutos() != null) {
+                        aFim = aInicio.plusMinutes(a.getServico().getDuracaoMinutos());
+                    }
+
+                    return aFim != null
                             && inicio.isBefore(aFim)
                             && fim.isAfter(aInicio);
                 });

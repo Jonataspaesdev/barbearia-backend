@@ -30,7 +30,7 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long> 
             @Param("fim") LocalDateTime fim
     );
 
-    // Agendamentos do barbeiro dentro do dia (intervalo)
+    // Agendamentos do barbeiro dentro do dia (intervalo) - todos status
     @Query("""
         select a from Agendamento a
         where a.barbeiro.id = :barbeiroId
@@ -38,6 +38,20 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long> 
           and a.dataHora < :fimDia
     """)
     List<Agendamento> findByBarbeiroAndDia(
+            @Param("barbeiroId") Long barbeiroId,
+            @Param("inicioDia") LocalDateTime inicioDia,
+            @Param("fimDia") LocalDateTime fimDia
+    );
+
+    // ✅ NOVO: agendamentos AGENDADOS do barbeiro dentro do dia (para disponibilidade)
+    @Query("""
+        select a from Agendamento a
+        where a.barbeiro.id = :barbeiroId
+          and a.status = 'AGENDADO'
+          and a.dataHora >= :inicioDia
+          and a.dataHora < :fimDia
+    """)
+    List<Agendamento> findAgendadosByBarbeiroAndDia(
             @Param("barbeiroId") Long barbeiroId,
             @Param("inicioDia") LocalDateTime inicioDia,
             @Param("fimDia") LocalDateTime fimDia

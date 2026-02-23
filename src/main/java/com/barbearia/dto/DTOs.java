@@ -375,6 +375,40 @@ public class DTOs {
     }
 
     // ==========================
+    // ✅ NOVO: DISPONIBILIDADE (CLIENTE/ADMIN)
+    // ==========================
+    public static class DisponibilidadeResponse {
+
+        private Long barbeiroId;
+        private LocalDate data;
+
+        // por enquanto fixo em 30, mas deixamos no response
+        private Integer duracaoMin;
+
+        private LocalTime horaEntrada;
+        private LocalTime horaSaida;
+
+        // lista de horários ocupados no formato "HH:mm"
+        private List<String> ocupados;
+
+        public DisponibilidadeResponse() {}
+
+        public Long getBarbeiroId() { return barbeiroId; }
+        public LocalDate getData() { return data; }
+        public Integer getDuracaoMin() { return duracaoMin; }
+        public LocalTime getHoraEntrada() { return horaEntrada; }
+        public LocalTime getHoraSaida() { return horaSaida; }
+        public List<String> getOcupados() { return ocupados; }
+
+        public void setBarbeiroId(Long barbeiroId) { this.barbeiroId = barbeiroId; }
+        public void setData(LocalDate data) { this.data = data; }
+        public void setDuracaoMin(Integer duracaoMin) { this.duracaoMin = duracaoMin; }
+        public void setHoraEntrada(LocalTime horaEntrada) { this.horaEntrada = horaEntrada; }
+        public void setHoraSaida(LocalTime horaSaida) { this.horaSaida = horaSaida; }
+        public void setOcupados(List<String> ocupados) { this.ocupados = ocupados; }
+    }
+
+    // ==========================
     // FINANCEIRO
     // ==========================
 
