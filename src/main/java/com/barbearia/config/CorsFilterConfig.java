@@ -49,7 +49,7 @@ public class CorsFilterConfig implements Filter {
             response.setHeader("Access-Control-Max-Age", "3600");
         }
 
-        // ✅ Responde o preflight na hora
+        // ✅ Responde preflight na hora
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             response.setStatus(HttpServletResponse.SC_OK);
             return;
