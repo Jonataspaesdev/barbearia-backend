@@ -1,23 +1,18 @@
 💈 Sistema de Barbearia - API REST
+API REST desenvolvida em Spring Boot 3 para gerenciamento completo de uma barbearia.
 
-API REST desenvolvida em Spring Boot 3 para gerenciamento completo de uma barbearia:
+Sistema Fullstack com autenticação JWT (Stateless), controle de acesso por Roles e regras de negócio reais.
 
+🚀 Funcionalidades do Sistema
 👥 Clientes
-
 ✂️ Serviços
-
 💈 Barbeiros
-
 📅 Agendamentos
-
+🕒 Disponibilidade dinâmica
 💳 Pagamentos
-
 📊 Relatório Financeiro
 
-Com autenticação JWT (Stateless), controle de acesso por Roles (ADMIN, BARBEIRO, CLIENTE) e documentação via Swagger (OpenAPI).
-
 🚀 Tecnologias Utilizadas
-
 Java 17
 
 Spring Boot 3
@@ -35,15 +30,15 @@ Swagger (OpenAPI)
 Maven
 
 🔐 Autenticação (JWT)
-
-A API utiliza autenticação via JWT Token.
+A API utiliza autenticação via JWT Token (Stateless).
 
 Após login, o token deve ser enviado nos endpoints protegidos no header:
 
 Authorization: Bearer SEU_TOKEN_AQUI
-👤 Cadastro de Cliente
+O sistema extrai a role diretamente do banco e aplica controle de acesso real.
 
-Agora o sistema permite que clientes criem conta.
+👤 Cadastro de Cliente
+Permite que clientes criem conta no sistema.
 
 Endpoint
 POST /auth/register
@@ -62,14 +57,12 @@ Resposta
   "email": "cliente1@gmail.com",
   "role": "ROLE_CLIENTE"
 }
-
-Regras:
-
+Regras
 ❌ Email não pode duplicar
 
-🔐 Senha é criptografada com BCrypt
+🔐 Senha criptografada com BCrypt
 
-👤 Cria automaticamente:
+✔ Cria automaticamente:
 
 Usuario com ROLE_CLIENTE
 
@@ -91,7 +84,6 @@ Resposta
   "role": "ROLE_ADMIN"
 }
 🛡️ Como usar o Token no Swagger
-
 Faça login em /auth/login
 
 Copie o campo token
@@ -101,47 +93,37 @@ Clique em Authorize
 Cole:
 
 Bearer SEU_TOKEN_AQUI
-
 Clique em Authorize
 
 Agora você pode acessar endpoints protegidos.
 
 👤 Usuário Administrador Padrão
-
-Ao iniciar o sistema, um administrador é criado automaticamente:
+Criado automaticamente ao iniciar o sistema:
 
 Email: admin@admin.com
-
 Senha: 123456
-
 Role: ROLE_ADMIN
 
 📌 Funcionalidades Implementadas
 👥 Clientes
-
 ⚠️ Apenas ADMIN pode gerenciar clientes manualmente.
 
-Endpoints:
-
+Endpoints
 POST   /clientes
 GET    /clientes
 GET    /clientes/{id}
 PUT    /clientes/{id}
 DELETE /clientes/{id}
 ✂️ Serviços
-
 Criar serviço
 
 Listar serviços ativos (público)
-
-Buscar por ID
 
 Atualizar
 
 Soft delete
 
-Regras:
-
+Regras
 Nome obrigatório
 
 Nome não pode duplicar
@@ -150,15 +132,13 @@ Preço > 0
 
 Duração > 0
 
-Endpoints:
-
+Endpoints
 POST   /servicos        (ADMIN)
 GET    /servicos        (Público)
 GET    /servicos/{id}
 PUT    /servicos/{id}   (ADMIN)
 DELETE /servicos/{id}   (Soft delete - ADMIN)
 💈 Barbeiros
-
 Criar barbeiro (cria automaticamente usuário ROLE_BARBEIRO)
 
 Listar barbeiros
@@ -171,58 +151,64 @@ Reativar
 
 Vincular serviços via servicoIds
 
-Endpoints:
-
-POST   /barbeiros                  (ADMIN)
+Endpoints
+POST   /barbeiros
 GET    /barbeiros
 GET    /barbeiros/{id}
-PUT    /barbeiros/{id}             (ADMIN)
-DELETE /barbeiros/{id}             (ADMIN)
-PUT    /barbeiros/{id}/reativar    (ADMIN)
+PUT    /barbeiros/{id}
+DELETE /barbeiros/{id}
+PUT    /barbeiros/{id}/reativar
 📅 Agendamentos
-
-Cliente pode criar agendamento
-
-Cliente só pode ver seus próprios agendamentos
-
-Admin pode ver todos
-
-Barbeiro pode ver os seus
-
-Regras de Negócio:
-
+Regras de Negócio
 ❌ Não permite agendar no passado
-
 ❌ Não permite fora do horário do barbeiro
-
 ❌ Não permite conflito de horário
-
 ✔ Calcula automaticamente dataHoraFim
+✔ ClienteId associado via token
+✔ Status: AGENDADO / CANCELADO / CONCLUIDO
 
-✔ ClienteId é automaticamente associado pelo token
-
-Endpoints:
-
+Endpoints
 POST   /agendamentos
-GET    /agendamentos
+GET    /agendamentos                     (ADMIN / BARBEIRO)
 GET    /agendamentos/cliente/{clienteId}
 GET    /agendamentos/barbeiro/{barbeiroId}
 PUT    /agendamentos/{id}
 DELETE /agendamentos/{id}/cancelar
-💳 Pagamentos
+🕒 Disponibilidade Dinâmica (NOVO)
+Permite que o frontend consulte horários ocupados de um barbeiro em um dia específico.
 
+Endpoint
+GET /agendamentos/disponibilidade?barbeiroId=1&data=2026-02-23
+Retorno
+{
+  "barbeiroId": 1,
+  "data": "2026-02-23",
+  "duracaoMin": 30,
+  "horaEntrada": "09:00",
+  "horaSaida": "18:30",
+  "ocupados": ["10:00", "10:30", "14:00"]
+}
+Regras
+Respeita horário de trabalho do barbeiro
+
+Considera duração fixa de 30 minutos
+
+Não retorna dados sensíveis
+
+Ignora agendamentos CANCELADOS
+
+Esse endpoint permite que o frontend desabilite horários ocupados de forma segura.
+
+💳 Pagamentos
 Realiza pagamento
 
 Marca automaticamente agendamento como CONCLUIDO
 
 Impede pagamento duplicado
 
-Endpoint:
-
+Endpoint
 POST /pagamentos
-
-Exemplo:
-
+Exemplo
 {
   "agendamentoId": 2,
   "valor": 35.0,
@@ -230,7 +216,6 @@ Exemplo:
 }
 📊 Relatório Financeiro
 GET /pagamentos/relatorio?dataInicio=2026-02-01&dataFim=2026-02-28
-
 Retorna:
 
 Total faturado
@@ -245,18 +230,17 @@ Públicos
 GET /servicos
 GET /barbeiros
 Protegidos (JWT obrigatório)
-
 Clientes
 
 Agendamentos
 
 Pagamentos
 
-Barbeiros (exceto listagem)
-
 Serviços (exceto GET)
 
-Roles
+Barbeiros (exceto GET)
+
+🏷 Roles
 Role	Permissões
 ROLE_ADMIN	Controle total
 ROLE_BARBEIRO	Visualizar e atualizar seus agendamentos
@@ -279,20 +263,34 @@ cd barbearia-backend
 mvn clean install
 mvn spring-boot:run
 🌐 Acesso
+API:
 
-API: http://localhost:8080
+http://localhost:8080
+Swagger:
 
-Swagger: http://localhost:8080/swagger-ui/index.html
-
+http://localhost:8080/swagger-ui/index.html
 📈 Status do Projeto
-
 ✔ Backend funcional
-✔ Autenticação JWT com Roles
-✔ Cadastro de Cliente
+✔ Autenticação JWT com Roles reais do banco
+✔ Cadastro automático de cliente
+✔ Endpoint de disponibilidade dinâmica
 ✔ Controle de acesso por perfil
-🚧 Frontend em desenvolvimento
+✔ Regras de negócio completas de agendamento
+✔ Integração total com frontend React
+
+🎯 Objetivo do Projeto
+Projeto desenvolvido para estudo e prática de:
+
+Arquitetura REST profissional
+
+Segurança com JWT
+
+Controle de acesso por roles
+
+Regras de negócio reais
+
+Integração Fullstack
 
 👨‍💻 Autor
-
 Jonatas Paes
-Backend Developer | Java | Spring Boot
+Backend Developer | Java | Spring Boot | React
