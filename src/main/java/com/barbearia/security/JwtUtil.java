@@ -3,13 +3,13 @@ package com.barbearia.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 @Component
@@ -22,7 +22,9 @@ public class JwtUtil {
     private long expirationMs;
 
     private SecretKey getKey() {
-        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretKey));
+        // ✅ Não usa Base64 decode. Usa a string do env como bytes.
+        // Isso evita erro de "Illegal base64 character" no Render.
+        return Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
     }
 
     public String gerarToken(UserDetails userDetails) {
