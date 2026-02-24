@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -15,8 +16,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
-
-import org.springframework.format.annotation.DateTimeFormat;
 
 import com.barbearia.dto.DTOs.AgendamentoRequest;
 import com.barbearia.dto.DTOs.AgendamentoResponse;
@@ -84,6 +83,7 @@ class AuthController {
         this.passwordEncoder = passwordEncoder;
     }
 
+    // ✅ LOGIN corrigido: devolve role normalizada + clienteId quando for CLIENTE
     @PostMapping("/login")
     @Operation(summary = "Realiza login e retorna token JWT")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
@@ -95,24 +95,39 @@ class AuthController {
         UserDetails userDetails = userDetailsService.loadUserByUsername(request.getEmail());
         String token = jwtUtil.gerarToken(userDetails);
 
-        Usuario usuario = usuarioRepository.findByEmail(request.getEmail()).orElseThrow();
+        Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+
+        // role do banco pode vir "ROLE_CLIENTE" -> vamos mandar "CLIENTE"
+        String role = (usuario.getRole() == null) ? "" : usuario.getRole().trim();
+        role = role.replace("ROLE_", ""); // "CLIENTE", "ADMIN", "BARBEIRO"
 
         LoginResponse response = new LoginResponse();
         response.setToken(token);
         response.setEmail(usuario.getEmail());
         response.setNome(usuario.getNome());
-        response.setRole(usuario.getRole());
+        response.setRole(role);
+
+        // ✅ clienteId só pra CLIENTE (usando usuarioId, que é o relacionamento correto)
+        if ("CLIENTE".equalsIgnoreCase(role)) {
+            Long usuarioId = usuario.getId();
+
+            Long clienteId = clienteRepository.findByUsuarioId(usuarioId)
+                    .map(Cliente::getId)
+                    .orElse(null);
+
+            response.setClienteId(clienteId);
+        }
 
         return ResponseEntity.ok(response);
     }
 
-    // ✅ NOVO: REGISTER DE CLIENTE
+    // ✅ REGISTER DE CLIENTE
     @PostMapping("/register")
     @Transactional
     @Operation(summary = "Cadastro de conta de cliente (cria Usuario + Cliente)")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
 
-        // 1) valida email duplicado
         if (usuarioRepository.existsByEmail(request.getEmail())) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body("Email já cadastrado. Use outro email ou faça login.");
@@ -122,7 +137,6 @@ class AuthController {
                     .body("Email já cadastrado como cliente. Use outro email ou faça login.");
         }
 
-        // 2) cria Usuario ROLE_CLIENTE com senha BCrypt
         Usuario usuario = new Usuario();
         usuario.setNome(request.getNome());
         usuario.setEmail(request.getEmail());
@@ -130,7 +144,6 @@ class AuthController {
         usuario.setSenha(passwordEncoder.encode(request.getSenha()));
         usuario = usuarioRepository.save(usuario);
 
-        // 3) cria Cliente e liga ao Usuario (OneToOne obrigatório)
         Cliente cliente = new Cliente();
         cliente.setUsuario(usuario);
         cliente.setNome(request.getNome());
@@ -138,7 +151,6 @@ class AuthController {
         cliente.setTelefone(request.getTelefone());
         cliente = clienteRepository.save(cliente);
 
-        // 4) resposta
         RegisterResponse resp = new RegisterResponse();
         resp.setUsuarioId(usuario.getId());
         resp.setClienteId(cliente.getId());
@@ -489,7 +501,7 @@ class AgendamentoController {
 
     private String emailLogado() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return (auth != null) ? auth.getName() : null; // geralmente email (username)
+        return (auth != null) ? auth.getName() : null;
     }
 
     private Cliente clienteDoUsuarioLogado() {
@@ -503,7 +515,6 @@ class AgendamentoController {
     @Operation(summary = "Cria um novo agendamento")
     public ResponseEntity<?> criar(@Valid @RequestBody AgendamentoRequest request) {
 
-        // ✅ Se for CLIENTE, ignora o clienteId do body e usa o do token
         if (temRole("ROLE_CLIENTE")) {
             Cliente cliente = clienteDoUsuarioLogado();
             if (cliente == null) {
@@ -526,7 +537,6 @@ class AgendamentoController {
     @Operation(summary = "Lista agendamentos por cliente")
     public ResponseEntity<?> listarPorCliente(@PathVariable Long clienteId) {
 
-        // ✅ Se for CLIENTE, só pode ver os próprios
         if (temRole("ROLE_CLIENTE")) {
             Cliente cliente = clienteDoUsuarioLogado();
             if (cliente == null) {
@@ -562,10 +572,6 @@ class AgendamentoController {
         return ResponseEntity.noContent().build();
     }
 
-    // ==========================
-    // ✅ NOVO: DISPONIBILIDADE
-    // GET /agendamentos/disponibilidade?barbeiroId=1&data=2026-02-21
-    // ==========================
     @GetMapping("/disponibilidade")
     @Operation(summary = "Retorna horários ocupados do barbeiro em um dia (sem dados sensíveis)")
     public ResponseEntity<DisponibilidadeResponse> disponibilidade(
@@ -577,7 +583,7 @@ class AgendamentoController {
 }
 
 // =================================================================
-// PAGAMENTO CONTROLLER (SEM LOMBOK) - PARA APARECER NO SWAGGER
+// PAGAMENTO CONTROLLER (SEM LOMBOK)
 // =================================================================
 
 @RestController

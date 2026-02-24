@@ -38,7 +38,12 @@ public class DTOs {
         private String token;
         private String email;
         private String nome;
+
+        // ✅ role normalizada: "CLIENTE", "ADMIN", "BARBEIRO"
         private String role;
+
+        // ✅ NOVO: só vem preenchido quando role = CLIENTE
+        private Long clienteId;
 
         public LoginResponse() {}
 
@@ -46,11 +51,13 @@ public class DTOs {
         public String getEmail() { return email; }
         public String getNome() { return nome; }
         public String getRole() { return role; }
+        public Long getClienteId() { return clienteId; }
 
         public void setToken(String token) { this.token = token; }
         public void setEmail(String email) { this.email = email; }
         public void setNome(String nome) { this.nome = nome; }
         public void setRole(String role) { this.role = role; }
+        public void setClienteId(Long clienteId) { this.clienteId = clienteId; }
     }
 
     // ✅ NOVO: REGISTER (CLIENTE)
@@ -375,20 +382,17 @@ public class DTOs {
     }
 
     // ==========================
-    // ✅ NOVO: DISPONIBILIDADE (CLIENTE/ADMIN)
+    // ✅ DISPONIBILIDADE (CLIENTE/ADMIN)
     // ==========================
     public static class DisponibilidadeResponse {
 
         private Long barbeiroId;
         private LocalDate data;
-
-        // por enquanto fixo em 30, mas deixamos no response
         private Integer duracaoMin;
 
         private LocalTime horaEntrada;
         private LocalTime horaSaida;
 
-        // lista de horários ocupados no formato "HH:mm"
         private List<String> ocupados;
 
         public DisponibilidadeResponse() {}
