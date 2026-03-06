@@ -2,12 +2,14 @@
 FROM maven:3.9.9-eclipse-temurin-17 AS build
 WORKDIR /app
 
-# Copia arquivos do Maven primeiro (melhora cache)
+# Copia primeiro o pom para aproveitar cache de dependências
 COPY pom.xml .
 RUN mvn -q -e -DskipTests dependency:go-offline
 
-# Copia o código e gera o jar
+# Copia o código-fonte
 COPY src ./src
+
+# Gera o jar
 RUN mvn -q -DskipTests clean package
 
 # ====== RUN STAGE ======
@@ -17,8 +19,8 @@ WORKDIR /app
 # Copia o jar gerado
 COPY --from=build /app/target/*.jar app.jar
 
-# Render define PORT automaticamente; seu Spring já lê PORT
+# Railway usa PORT por variável de ambiente; seu Spring já está preparado
 EXPOSE 8080
 
 # Inicia a aplicação
-CMD ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
