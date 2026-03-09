@@ -1,55 +1,69 @@
-💈 Sistema de Barbearia - API REST
-API REST desenvolvida em Spring Boot 3 para gerenciamento completo de uma barbearia.
+# 💈 Sistema de Barbearia - API REST
 
-Sistema Fullstack com autenticação JWT (Stateless), controle de acesso por Roles e regras de negócio reais.
+API REST desenvolvida em **Spring Boot 3** para gerenciamento completo de uma barbearia.
 
-🚀 Funcionalidades do Sistema
-👥 Clientes
-✂️ Serviços
-💈 Barbeiros
-📅 Agendamentos
-🕒 Disponibilidade dinâmica
-💳 Pagamentos
-📊 Relatório Financeiro
+Projeto **Fullstack** com autenticação **JWT Stateless**, controle de acesso por **roles**, regras de negócio reais e integração com frontend em **React**.
 
-🚀 Tecnologias Utilizadas
-Java 17
+---
 
-Spring Boot 3
+## 🚀 Visão Geral
 
-Spring Security
+O sistema foi criado para simular um cenário real de uma barbearia, com fluxo completo de:
 
-JWT (Autenticação Stateless)
+- cadastro de clientes
+- gestão de serviços
+- gestão de barbeiros
+- agendamentos com validações reais
+- disponibilidade dinâmica
+- pagamentos
+- relatório financeiro
 
-Spring Data JPA
+A API foi desenvolvida com foco em:
 
-PostgreSQL
+- arquitetura REST profissional
+- segurança com JWT
+- separação por camadas
+- regras de negócio reais
+- integração com frontend moderno
 
-Swagger (OpenAPI)
+---
 
-Maven
+## 🚀 Tecnologias Utilizadas
 
-🔐 Autenticação (JWT)
-A API utiliza autenticação via JWT Token (Stateless).
+- Java 17
+- Spring Boot 3
+- Spring Security
+- JWT (Autenticação Stateless)
+- Spring Data JPA
+- PostgreSQL
+- Swagger / OpenAPI
+- Maven
 
-Após login, o token deve ser enviado nos endpoints protegidos no header:
+---
 
+## 🔐 Autenticação JWT
+
+A API utiliza autenticação via **JWT Token Stateless**.
+
+Após realizar login, o token deve ser enviado nos endpoints protegidos no header:
+
+```http
 Authorization: Bearer SEU_TOKEN_AQUI
-O sistema extrai a role diretamente do banco e aplica controle de acesso real.
+O sistema extrai o usuário autenticado e aplica o controle de acesso com base na role salva no banco.
 
 👤 Cadastro de Cliente
-Permite que clientes criem conta no sistema.
+Permite que o cliente crie sua própria conta no sistema.
 
 Endpoint
 POST /auth/register
-Exemplo de Requisição
+Exemplo de requisição
 {
   "nome": "Cliente Teste",
   "email": "cliente1@gmail.com",
   "telefone": "11999990000",
   "senha": "123456"
 }
-Resposta
+Exemplo de resposta
 {
   "usuarioId": 10,
   "clienteId": 4,
@@ -58,32 +72,34 @@ Resposta
   "role": "ROLE_CLIENTE"
 }
 Regras
-❌ Email não pode duplicar
+Email não pode duplicar
 
-🔐 Senha criptografada com BCrypt
+Senha criptografada com BCrypt
 
-✔ Cria automaticamente:
+Cria automaticamente:
 
 Usuario com ROLE_CLIENTE
 
-Cliente vinculado (OneToOne)
+Cliente vinculado via relacionamento
 
 🔑 Login
 Endpoint
 POST /auth/login
-Exemplo
+Exemplo de requisição
 {
   "email": "admin@admin.com",
   "senha": "123456"
 }
-Resposta
+Exemplo de resposta
 {
   "token": "SEU_TOKEN_AQUI",
   "email": "admin@admin.com",
   "nome": "Administrador",
-  "role": "ROLE_ADMIN"
+  "role": "ADMIN"
 }
-🛡️ Como usar o Token no Swagger
+Observação: a role retornada no login vem normalizada para facilitar o uso no frontend (ADMIN, CLIENTE, BARBEIRO).
+
+🛡️ Como usar o token no Swagger
 Faça login em /auth/login
 
 Copie o campo token
@@ -95,18 +111,20 @@ Cole:
 Bearer SEU_TOKEN_AQUI
 Clique em Authorize
 
-Agora você pode acessar endpoints protegidos.
+Agora você poderá acessar os endpoints protegidos.
 
 👤 Usuário Administrador Padrão
-Criado automaticamente ao iniciar o sistema:
+Criado automaticamente ao iniciar a aplicação:
 
 Email: admin@admin.com
+
 Senha: 123456
+
 Role: ROLE_ADMIN
 
 📌 Funcionalidades Implementadas
 👥 Clientes
-⚠️ Apenas ADMIN pode gerenciar clientes manualmente.
+Apenas usuários com ROLE_ADMIN podem gerenciar clientes manualmente.
 
 Endpoints
 POST   /clientes
@@ -115,22 +133,18 @@ GET    /clientes/{id}
 PUT    /clientes/{id}
 DELETE /clientes/{id}
 ✂️ Serviços
-Criar serviço
-
-Listar serviços ativos (público)
-
-Atualizar
-
-Soft delete
+Permite criar, listar, atualizar e desativar serviços.
 
 Regras
 Nome obrigatório
 
 Nome não pode duplicar
 
-Preço > 0
+Preço deve ser maior que 0
 
-Duração > 0
+Duração deve ser maior que 0
+
+Soft delete para não perder histórico
 
 Endpoints
 POST   /servicos        (ADMIN)
@@ -139,17 +153,24 @@ GET    /servicos/{id}
 PUT    /servicos/{id}   (ADMIN)
 DELETE /servicos/{id}   (Soft delete - ADMIN)
 💈 Barbeiros
-Criar barbeiro (cria automaticamente usuário ROLE_BARBEIRO)
+Permite cadastrar barbeiros, configurar horário de trabalho e vincular serviços.
 
-Listar barbeiros
+Ao criar um barbeiro, o sistema cria automaticamente um usuário com ROLE_BARBEIRO.
 
-Atualizar
+Funcionalidades
+criar barbeiro
 
-Soft delete
+listar barbeiros ativos
 
-Reativar
+atualizar dados
 
-Vincular serviços via servicoIds
+soft delete
+
+reativar barbeiro
+
+vincular serviços via servicoIds
+
+exibir horaEntrada e horaSaida na resposta
 
 Endpoints
 POST   /barbeiros
@@ -159,90 +180,117 @@ PUT    /barbeiros/{id}
 DELETE /barbeiros/{id}
 PUT    /barbeiros/{id}/reativar
 📅 Agendamentos
-Regras de Negócio
-❌ Não permite agendar no passado
-❌ Não permite fora do horário do barbeiro
-❌ Não permite conflito de horário
-✔ Calcula automaticamente dataHoraFim
-✔ ClienteId associado via token
-✔ Status: AGENDADO / CANCELADO / CONCLUIDO
+Permite criar, atualizar, listar e cancelar agendamentos.
+
+Regras de negócio
+Não permite agendar no passado
+
+Não permite remarcar para data passada
+
+Não permite agendar fora do expediente do barbeiro
+
+Não permite conflito de horário
+
+Calcula automaticamente dataHoraFim
+
+Associa clienteId via usuário autenticado quando a role é CLIENTE
+
+Status suportados:
+
+AGENDADO
+
+CANCELADO
+
+CONCLUIDO
+
+Melhorias aplicadas
+normalização de data/hora para evitar erro com segundos e nanos
+
+timezone ajustado para America/Sao_Paulo
+
+maior estabilidade para agendamentos no mesmo dia
+
+logs de apoio para debug em produção
 
 Endpoints
 POST   /agendamentos
-GET    /agendamentos                     (ADMIN / BARBEIRO)
+GET    /agendamentos
 GET    /agendamentos/cliente/{clienteId}
 GET    /agendamentos/barbeiro/{barbeiroId}
 PUT    /agendamentos/{id}
 DELETE /agendamentos/{id}/cancelar
-🕒 Disponibilidade Dinâmica (NOVO)
-Permite que o frontend consulte horários ocupados de um barbeiro em um dia específico.
+🕒 Disponibilidade Dinâmica
+Permite ao frontend consultar os horários ocupados de um barbeiro em uma data específica.
 
 Endpoint
 GET /agendamentos/disponibilidade?barbeiroId=1&data=2026-02-23
-Retorno
+Exemplo de resposta
 {
   "barbeiroId": 1,
   "data": "2026-02-23",
   "duracaoMin": 30,
-  "horaEntrada": "09:00",
-  "horaSaida": "18:30",
+  "horaEntrada": "09:00:00",
+  "horaSaida": "18:30:00",
   "ocupados": ["10:00", "10:30", "14:00"]
 }
 Regras
-Respeita horário de trabalho do barbeiro
+respeita o horário de trabalho do barbeiro
 
-Considera duração fixa de 30 minutos
+considera duração fixa de 30 minutos para os slots
 
-Não retorna dados sensíveis
+ignora agendamentos cancelados
 
-Ignora agendamentos CANCELADOS
+não expõe dados sensíveis
 
-Esse endpoint permite que o frontend desabilite horários ocupados de forma segura.
+permite ao frontend bloquear horários ocupados de forma segura
 
 💳 Pagamentos
-Realiza pagamento
+Realiza o pagamento de um agendamento.
 
-Marca automaticamente agendamento como CONCLUIDO
+Regras
+impede pagamento duplicado
 
-Impede pagamento duplicado
+ao pagar, o agendamento é marcado automaticamente como CONCLUIDO
 
 Endpoint
 POST /pagamentos
-Exemplo
+Exemplo de requisição
 {
   "agendamentoId": 2,
   "valor": 35.0,
   "formaPagamento": "PIX"
 }
 📊 Relatório Financeiro
+Retorna dados consolidados de pagamentos por período.
+
+Endpoint
 GET /pagamentos/relatorio?dataInicio=2026-02-01&dataFim=2026-02-28
-Retorna:
+Retorna
+total faturado
 
-Total faturado
+quantidade de pagamentos
 
-Quantidade de pagamentos
-
-Período consultado
+período consultado
 
 🔒 Controle de Acesso
 Públicos
 /auth/**
 GET /servicos
 GET /barbeiros
-Protegidos (JWT obrigatório)
-Clientes
+Protegidos com JWT
+clientes
 
-Agendamentos
+agendamentos
 
-Pagamentos
+pagamentos
 
-Serviços (exceto GET)
+serviços (exceto GET)
 
-Barbeiros (exceto GET)
+barbeiros (exceto GET)
 
 🏷 Roles
 Role	Permissões
-ROLE_ADMIN	Controle total
+ROLE_ADMIN	Controle total do sistema
 ROLE_BARBEIRO	Visualizar e atualizar seus agendamentos
 ROLE_CLIENTE	Criar e visualizar seus próprios agendamentos
 📂 Estrutura do Projeto
@@ -254,42 +302,84 @@ security/
 config/
 dto/
 exception/
+⚙️ Configuração de Timezone
+Para evitar problemas de horário em produção, a aplicação utiliza timezone configurado para:
+
+America/Sao_Paulo
+Também foi adicionada uma configuração dedicada para padronizar o horário do sistema no backend.
+
 ▶️ Como Executar o Projeto
-1️⃣ Clonar repositório
+1. Clonar o repositório
 git clone https://github.com/Jonataspaesdev/barbearia-backend.git
-2️⃣ Entrar na pasta
+2. Entrar na pasta
 cd barbearia-backend
-3️⃣ Executar
+3. Executar o projeto
 mvn clean install
 mvn spring-boot:run
-🌐 Acesso
-API:
-
+🌐 Acesso Local
+API
 http://localhost:8080
-Swagger:
-
+Swagger
 http://localhost:8080/swagger-ui/index.html
+🌍 Deploy em Produção
+O backend pode ser executado em plataformas como Railway ou Render utilizando variáveis de ambiente.
+
+Variáveis esperadas
+PORT
+
+SPRING_PROFILES_ACTIVE
+
+JWT_SECRET
+
+JWT_EXPIRATION
+
+CORS_ALLOWED_ORIGINS
+
+PGHOST
+
+PGPORT
+
+PGDATABASE
+
+PGUSER
+
+PGPASSWORD
+
 📈 Status do Projeto
-✔ Backend funcional
-✔ Autenticação JWT com Roles reais do banco
-✔ Cadastro automático de cliente
-✔ Endpoint de disponibilidade dinâmica
-✔ Controle de acesso por perfil
-✔ Regras de negócio completas de agendamento
-✔ Integração total com frontend React
+Backend funcional
+
+Autenticação JWT com roles reais do banco
+
+Cadastro automático de cliente
+
+Endpoint de disponibilidade dinâmica
+
+Controle de acesso por perfil
+
+Regras de negócio completas de agendamento
+
+Timezone ajustado para produção
+
+Fluxo de agendamento funcionando no mesmo dia
+
+Integração total com frontend React
 
 🎯 Objetivo do Projeto
 Projeto desenvolvido para estudo e prática de:
 
-Arquitetura REST profissional
+arquitetura REST profissional
 
-Segurança com JWT
+segurança com JWT
 
-Controle de acesso por roles
+controle de acesso por roles
 
-Regras de negócio reais
+regras de negócio reais
 
-Integração Fullstack
+integração fullstack
+
+deploy em ambiente real
+
+organização de backend em camadas
 
 👨‍💻 Autor
 Jonatas Paes
