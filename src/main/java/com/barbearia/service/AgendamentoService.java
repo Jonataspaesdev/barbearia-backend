@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -58,14 +59,24 @@ public class AgendamentoService {
         Servico servico = servicoRepository.findById(request.getServicoId())
                 .orElseThrow(() -> new ResourceNotFoundException("Serviço não encontrado: " + request.getServicoId()));
 
-        LocalDateTime inicio = request.getDataHora();
+        LocalDateTime inicio = normalizarDataHora(request.getDataHora());
         if (inicio == null) {
             throw new BusinessException("dataHora é obrigatório.");
         }
 
         LocalDateTime fim = inicio.plusMinutes(servico.getDuracaoMinutos());
+        LocalDateTime agora = agoraNormalizado();
 
-        if (inicio.isBefore(agora())) {
+        log.info("Criando agendamento - clienteId={}, barbeiroId={}, servicoId={}, inicioRecebido={}, inicioNormalizado={}, agoraSistema={}",
+                request.getClienteId(),
+                request.getBarbeiroId(),
+                request.getServicoId(),
+                request.getDataHora(),
+                inicio,
+                agora
+        );
+
+        if (inicio.isBefore(agora)) {
             throw new BusinessException("Não é permitido agendar em data passada.");
         }
 
@@ -98,10 +109,18 @@ public class AgendamentoService {
 
         if (request.getDataHora() != null) {
 
-            LocalDateTime novoInicio = request.getDataHora();
+            LocalDateTime novoInicio = normalizarDataHora(request.getDataHora());
             LocalDateTime novoFim = novoInicio.plusMinutes(agendamento.getServico().getDuracaoMinutos());
+            LocalDateTime agora = agoraNormalizado();
 
-            if (novoInicio.isBefore(agora())) {
+            log.info("Atualizando agendamento - id={}, novoInicioRecebido={}, novoInicioNormalizado={}, agoraSistema={}",
+                    id,
+                    request.getDataHora(),
+                    novoInicio,
+                    agora
+            );
+
+            if (novoInicio.isBefore(agora)) {
                 throw new BusinessException("Não é permitido remarcar para data passada.");
             }
 
@@ -194,7 +213,7 @@ public class AgendamentoService {
                 continue;
             }
 
-            LocalDateTime aInicio = a.getDataHora();
+            LocalDateTime aInicio = normalizarDataHora(a.getDataHora());
             LocalDateTime aFim = a.getDataHoraFim();
 
             if (aFim == null) {
@@ -202,6 +221,8 @@ public class AgendamentoService {
                     continue;
                 }
                 aFim = aInicio.plusMinutes(a.getServico().getDuracaoMinutos());
+            } else {
+                aFim = normalizarDataHora(aFim);
             }
 
             LocalDateTime slot = aInicio;
@@ -239,7 +260,6 @@ public class AgendamentoService {
         if (horaInicio.isBefore(barbeiro.getHoraEntrada())
                 || horaFim.isAfter(barbeiro.getHoraSaida())
                 || horaInicio.equals(barbeiro.getHoraSaida())) {
-
             throw new BusinessException("Horário fora do expediente do barbeiro.");
         }
     }
@@ -266,8 +286,12 @@ public class AgendamentoService {
                         return false;
                     }
 
+                    aInicio = normalizarDataHora(aInicio);
+
                     if (aFim == null && a.getServico() != null && a.getServico().getDuracaoMinutos() != null) {
                         aFim = aInicio.plusMinutes(a.getServico().getDuracaoMinutos());
+                    } else if (aFim != null) {
+                        aFim = normalizarDataHora(aFim);
                     }
 
                     return aFim != null
@@ -280,8 +304,15 @@ public class AgendamentoService {
         }
     }
 
-    private LocalDateTime agora() {
-        return LocalDateTime.now(ZONA_SISTEMA);
+    private LocalDateTime agoraNormalizado() {
+        return LocalDateTime.now(ZONA_SISTEMA).truncatedTo(ChronoUnit.MINUTES);
+    }
+
+    private LocalDateTime normalizarDataHora(LocalDateTime dataHora) {
+        if (dataHora == null) {
+            return null;
+        }
+        return dataHora.withSecond(0).withNano(0);
     }
 
     private Agendamento buscarPorId(Long id) {
