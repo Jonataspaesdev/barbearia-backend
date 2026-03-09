@@ -1,42 +1,47 @@
-🚀 Deploy em Produção – Barbearia (Render + Vercel)
-📌 Arquitetura em Produção
+# 🚀 Deploy em Produção – Barbearia (Railway + Vercel)
+
+## 📌 Arquitetura em Produção
 
 O sistema está dividido em dois serviços:
 
-🔹 Backend (API)
+### 🔹 Backend (API)
 
-Hospedado no Render
+Hospedado na **Railway**
 
-URL:
+**URL:**
 
-https://barbearia-backend-h7da.onrender.com
+https://barbearia-backend-production-8882.up.railway.app
 
-Banco de dados: PostgreSQL (Render)
+**Banco de dados:** PostgreSQL (Railway)  
+**Perfil ativo:** local  
+**Autenticação:** JWT Stateless  
 
-Perfil ativo: prod
+**Documentação Swagger:**
 
-Autenticação: JWT (Stateless)
+https://barbearia-backend-production-8882.up.railway.app/swagger-ui/index.html
 
-Documentação: Swagger disponível em:
+---
 
-/swagger-ui/index.html
-🔹 Frontend
+### 🔹 Frontend
 
-Hospedado na Vercel
+Hospedado na **Vercel**
 
-URL:
+**URL:**
 
 https://barbearia-frontend-two.vercel.app
 
-Framework: React + Vite
+**Framework:** React + Vite  
+**Comunicação com a API:** Axios
 
-Comunicação via Axios com API do Render
+---
 
-🔐 Configuração de Variáveis de Ambiente (Render)
+## 🔐 Configuração de Variáveis de Ambiente
 
-No Render → Environment foram configuradas as seguintes variáveis:
+### Backend (Railway)
 
-Banco de Dados
+No serviço **barbearia-backend** foram configuradas as seguintes variáveis:
+
+#### Banco de Dados
 
 SPRING_DATASOURCE_URL
 
@@ -44,94 +49,138 @@ SPRING_DATASOURCE_USERNAME
 
 SPRING_DATASOURCE_PASSWORD
 
-JWT
+#### JWT
 
 JWT_SECRET
 
 JWT_EXPIRATION
 
-CORS
+#### CORS
 
 CORS_ALLOWED_ORIGINS
 
-Valor configurado:
+**Valor configurado:**
 
-https://barbearia-frontend-two.vercel.app
-🌍 Configuração CORS (Backend)
+https://barbearia-frontend-two.vercel.app,http://localhost:5173
 
-Arquivo: CorsConfig.java
+---
 
-Permite múltiplas origins via variável cors.allowed-origins
+### Banco PostgreSQL (Railway)
 
-Permite métodos:
+No serviço **Postgres** a Railway gera automaticamente variáveis como:
 
-GET
+PGHOST  
+PGPORT  
+PGDATABASE  
+PGUSER  
+PGPASSWORD
 
-POST
+Essas variáveis são usadas para montar a conexão do backend com o banco.
 
-PUT
+---
 
-DELETE
+### Frontend (Vercel)
 
-PATCH
+No projeto da Vercel foi configurada a variável:
 
-OPTIONS
+VITE_API_URL
 
-Permite headers:
+**Valor configurado:**
 
-Authorization
+https://barbearia-backend-production-8882.up.railway.app
 
-Content-Type
+---
 
-Permite credentials
+## 🌍 Configuração de CORS (Backend)
 
-Cache preflight: 3600 segundos
+O backend usa configuração de CORS para permitir requisições do frontend da Vercel e também do ambiente local.
 
-Teste manual realizado via:
+### Origins permitidas
 
-curl -i -X OPTIONS "https://barbearia-backend-h7da.onrender.com/auth/login" \
-  -H "Origin: https://barbearia-frontend-two.vercel.app" \
-  -H "Access-Control-Request-Method: POST"
+- https://barbearia-frontend-two.vercel.app
+- http://localhost:5173
 
-Resultado esperado:
+### Métodos permitidos
 
-access-control-allow-origin: https://barbearia-frontend-two.vercel.app
-🔐 Autenticação
+- GET
+- POST
+- PUT
+- DELETE
+- PATCH
+- OPTIONS
 
-Endpoint:
+### Headers permitidos
+
+- Authorization
+- Content-Type
+- Accept
+- Origin
+
+### Outras configurações
+
+- Credentials habilitado
+- Exposed headers: Authorization
+- Cache de preflight: 3600 segundos
+
+---
+
+## 🔐 Autenticação
+
+### Endpoint de login
 
 POST /auth/login
 
-Exemplo:
+### Exemplo de requisição
 
+```json
 {
   "email": "admin@admin.com",
   "senha": "123456"
 }
-
-Resposta:
-
+Exemplo de resposta
 {
   "token": "JWT_TOKEN",
   "email": "admin@admin.com",
   "nome": "Administrador",
-  "role": "ROLE_ADMIN"
+  "role": "ADMIN"
 }
 
-O frontend salva o token no localStorage e envia automaticamente via interceptor Axios:
+O frontend salva o token no localStorage e envia automaticamente nas próximas requisições usando interceptor do Axios:
 
 Authorization: Bearer TOKEN
+👤 Usuário ADMIN padrão
+
+Na inicialização da aplicação, o sistema garante a existência do usuário administrador padrão.
+
+Credenciais padrão
+
+Email:
+
+admin@admin.com
+
+Senha:
+
+123456
+
+Se o usuário já existir, a senha e a role são atualizadas automaticamente no startup da aplicação.
+
 📊 Banco de Dados em Produção
 
-⚠ O banco do Render é separado do banco local.
+⚠ Importante: o banco de produção da Railway é separado do banco local.
 
-Ao subir para produção:
+Isso significa que:
 
-O banco inicia vazio.
+dados criados localmente não aparecem em produção
 
-Apenas o usuário ADMIN padrão é criado automaticamente (se configurado no projeto).
+dados criados em produção não aparecem localmente
 
-Clientes, barbeiros, serviços e agendamentos devem ser cadastrados manualmente via Swagger ou Frontend.
+Ao subir o sistema em produção:
+
+o banco começa vazio
+
+o usuário ADMIN padrão é criado automaticamente
+
+clientes, barbeiros, serviços e agendamentos devem ser cadastrados manualmente via frontend ou Swagger
 
 🔄 Processo de Atualização (Deploy)
 Backend
@@ -139,36 +188,83 @@ git add .
 git commit -m "descrição da alteração"
 git push origin main
 
-Render detecta push e faz deploy automático.
+A Railway detecta o push e faz o deploy automático.
 
 Frontend
 git add .
 git commit -m "descrição da alteração"
 git push origin main
 
-Vercel detecta push e faz deploy automático.
+A Vercel detecta o push e faz o deploy automático.
 
-🛠 Problemas resolvidos durante deploy
+🛠 Problemas resolvidos durante o deploy
 
-✔ Erro de CORS entre Vercel e Render
-✔ Configuração de variáveis JWT em produção
-✔ Configuração dinâmica de múltiplas origins
-✔ Erro 404 em rotas do React (corrigido via vercel.json)
-✔ Problema de preflight OPTIONS
-✔ Atualização de build cache no Vercel
+Configuração do backend na Railway
+
+Configuração do PostgreSQL na Railway
+
+Ajuste das variáveis de ambiente do banco
+
+Ajuste do application.properties para produção
+
+Geração do domínio público da API
+
+Configuração de CORS entre Vercel e Railway
+
+Ajuste de conflito de configuração de CORS no Spring
+
+Configuração da variável VITE_API_URL na Vercel
+
+Integração JWT entre frontend e backend
+
+Correção de erro de autenticação tratado como 500
+
+Swagger funcionando em produção
 
 ✅ Status Atual do Sistema
 
-✔ Backend online (Render)
-✔ Frontend online (Vercel)
-✔ Login ADMIN funcionando
-✔ Login CLIENTE funcionando
-✔ Dashboard ADMIN funcionando
-✔ Integração JWT funcionando
-✔ CORS funcionando corretamente
+Backend online na Railway
 
-📌 Observação Importante
+PostgreSQL online na Railway
 
-Produção e ambiente local utilizam bancos diferentes.
+Frontend online na Vercel
 
-Dados criados localmente não aparecem no Render.
+Swagger funcionando
+
+Login ADMIN funcionando
+
+Integração JWT funcionando
+
+CORS funcionando corretamente
+
+Frontend conectado à API em produção
+
+📌 Observações Importantes
+1. Produção e ambiente local usam bancos diferentes
+
+Os dados do seu computador não vão automaticamente para a Railway.
+
+2. O frontend depende da variável VITE_API_URL
+
+Se essa variável estiver errada ou desatualizada na Vercel, o frontend não consegue acessar a API.
+
+3. O backend depende das variáveis de banco
+
+Se SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME ou SPRING_DATASOURCE_PASSWORD estiverem erradas, a aplicação não sobe.
+
+4. O CORS depende da variável CORS_ALLOWED_ORIGINS
+
+Se essa variável não estiver configurada corretamente, o frontend pode receber erro de CORS ao tentar logar ou chamar a API.
+
+🔗 Links finais do sistema
+Frontend
+
+https://barbearia-frontend-two.vercel.app
+
+Backend
+
+https://barbearia-backend-production-8882.up.railway.app
+
+Swagger
+
+https://barbearia-backend-production-8882.up.railway.app/swagger-ui/index.html
