@@ -1,17 +1,20 @@
 package com.barbearia.exception;
 
+import java.util.Map;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.logging.Logger;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -22,7 +25,8 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiError handleValidation(MethodArgumentNotValidException ex) {
         Map<String, String> erros = ex.getBindingResult()
-                .getFieldErrors().stream()
+                .getFieldErrors()
+                .stream()
                 .collect(Collectors.toMap(
                         FieldError::getField,
                         fe -> fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "inválido",
@@ -47,22 +51,36 @@ public class GlobalExceptionHandler {
         return ApiError.of(404, "Não encontrado", ex.getMessage());
     }
 
-    @ExceptionHandler(BadCredentialsException.class)
+    @ExceptionHandler({
+            BadCredentialsException.class,
+            UsernameNotFoundException.class,
+            AuthenticationCredentialsNotFoundException.class
+    })
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
-    public ApiError handleBadCredentials(BadCredentialsException ex) {
+    public ApiError handleUnauthorized(Exception ex) {
+        log.warning("Falha de autenticação: " + ex.getClass().getSimpleName() + " - " + ex.getMessage());
         return ApiError.of(401, "Não autorizado", "Email ou senha inválidos.");
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ApiError handleAuthentication(AuthenticationException ex) {
+        log.warning("Erro de autenticação: " + ex.getClass().getSimpleName() + " - " + ex.getMessage());
+        return ApiError.of(401, "Não autorizado", "Falha na autenticação.");
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public ApiError handleAccessDenied(AccessDeniedException ex) {
+        log.warning("Acesso negado: " + ex.getMessage());
         return ApiError.of(403, "Acesso negado", "Você não tem permissão para esta ação.");
     }
 
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ApiError handleGeneric(Exception ex) {
-        log.severe("Erro interno: " + ex.getMessage());
+        log.severe("Erro interno: " + ex.getClass().getName() + " - " + ex.getMessage());
+        ex.printStackTrace();
         return ApiError.of(500, "Erro interno", "Erro inesperado. Tente novamente.");
     }
 }
