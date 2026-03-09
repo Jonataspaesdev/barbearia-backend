@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -29,6 +30,7 @@ public class AgendamentoService {
 
     private static final int DURACAO_FIXA_MIN = 30;
     private static final DateTimeFormatter HORA_FMT = DateTimeFormatter.ofPattern("HH:mm");
+    private static final ZoneId ZONA_SISTEMA = ZoneId.of("America/Sao_Paulo");
 
     private final AgendamentoRepository agendamentoRepository;
     private final ClienteRepository clienteRepository;
@@ -57,11 +59,13 @@ public class AgendamentoService {
                 .orElseThrow(() -> new ResourceNotFoundException("Serviço não encontrado: " + request.getServicoId()));
 
         LocalDateTime inicio = request.getDataHora();
-        if (inicio == null) throw new BusinessException("dataHora é obrigatório.");
+        if (inicio == null) {
+            throw new BusinessException("dataHora é obrigatório.");
+        }
 
         LocalDateTime fim = inicio.plusMinutes(servico.getDuracaoMinutos());
 
-        if (inicio.isBefore(LocalDateTime.now())) {
+        if (inicio.isBefore(agora())) {
             throw new BusinessException("Não é permitido agendar em data passada.");
         }
 
@@ -84,19 +88,22 @@ public class AgendamentoService {
 
         Agendamento agendamento = buscarPorId(id);
 
-        if (agendamento.getStatus() == StatusAgendamento.CANCELADO)
+        if (agendamento.getStatus() == StatusAgendamento.CANCELADO) {
             throw new BusinessException("Não é possível atualizar um agendamento cancelado.");
+        }
 
-        if (agendamento.getStatus() == StatusAgendamento.CONCLUIDO)
+        if (agendamento.getStatus() == StatusAgendamento.CONCLUIDO) {
             throw new BusinessException("Não é possível atualizar um agendamento concluído.");
+        }
 
         if (request.getDataHora() != null) {
 
             LocalDateTime novoInicio = request.getDataHora();
             LocalDateTime novoFim = novoInicio.plusMinutes(agendamento.getServico().getDuracaoMinutos());
 
-            if (novoInicio.isBefore(LocalDateTime.now()))
+            if (novoInicio.isBefore(agora())) {
                 throw new BusinessException("Não é permitido remarcar para data passada.");
+            }
 
             validarHorarioTrabalho(agendamento.getBarbeiro(), novoInicio, novoFim);
             validarConflito(agendamento.getBarbeiro().getId(), id, novoInicio, novoFim);
@@ -104,11 +111,13 @@ public class AgendamentoService {
             agendamento.setDataHora(novoInicio);
         }
 
-        if (request.getStatus() != null && !request.getStatus().isBlank())
+        if (request.getStatus() != null && !request.getStatus().isBlank()) {
             agendamento.setStatus(request.getStatus());
+        }
 
-        if (request.getObservacao() != null)
+        if (request.getObservacao() != null) {
             agendamento.setObservacao(request.getObservacao());
+        }
 
         return toResponse(agendamentoRepository.save(agendamento));
     }
@@ -117,11 +126,13 @@ public class AgendamentoService {
 
         Agendamento agendamento = buscarPorId(id);
 
-        if (agendamento.getStatus() == StatusAgendamento.CONCLUIDO)
+        if (agendamento.getStatus() == StatusAgendamento.CONCLUIDO) {
             throw new BusinessException("Não é possível cancelar um agendamento já concluído.");
+        }
 
-        if (agendamento.getStatus() == StatusAgendamento.CANCELADO)
+        if (agendamento.getStatus() == StatusAgendamento.CANCELADO) {
             throw new BusinessException("Agendamento já está cancelado.");
+        }
 
         agendamento.setStatus(StatusAgendamento.CANCELADO);
         agendamentoRepository.save(agendamento);
@@ -151,14 +162,15 @@ public class AgendamentoService {
                 .collect(Collectors.toList());
     }
 
-    // ==========================
-    // ✅ NOVO: DISPONIBILIDADE (CLIENTE/ADMIN)
-    // ==========================
     @Transactional(readOnly = true)
     public DisponibilidadeResponse getDisponibilidade(Long barbeiroId, LocalDate data) {
 
-        if (barbeiroId == null) throw new BusinessException("barbeiroId é obrigatório.");
-        if (data == null) throw new BusinessException("data é obrigatória (formato YYYY-MM-DD).");
+        if (barbeiroId == null) {
+            throw new BusinessException("barbeiroId é obrigatório.");
+        }
+        if (data == null) {
+            throw new BusinessException("data é obrigatória (formato YYYY-MM-DD).");
+        }
 
         Barbeiro barbeiro = barbeiroRepository.findById(barbeiroId)
                 .orElseThrow(() -> new ResourceNotFoundException("Barbeiro não encontrado: " + barbeiroId));
@@ -173,31 +185,29 @@ public class AgendamentoService {
         LocalDateTime inicioDia = data.atStartOfDay();
         LocalDateTime fimDia = data.plusDays(1).atStartOfDay();
 
-        // pegamos apenas AGENDADO para bloquear horários ocupados
         List<Agendamento> agendados = agendamentoRepository.findAgendadosByBarbeiroAndDia(barbeiroId, inicioDia, fimDia);
 
-        // usamos Set para não repetir e já ordenar depois
         Set<String> ocupados = new HashSet<>();
 
         for (Agendamento a : agendados) {
-            if (a.getDataHora() == null) continue;
+            if (a.getDataHora() == null) {
+                continue;
+            }
 
             LocalDateTime aInicio = a.getDataHora();
-
-            // Se sua entidade calcula dataHoraFim certinho, usamos ela.
-            // Se vier null (por algum motivo), calculamos pelo serviço.
             LocalDateTime aFim = a.getDataHoraFim();
+
             if (aFim == null) {
-                if (a.getServico() == null || a.getServico().getDuracaoMinutos() == null) continue;
+                if (a.getServico() == null || a.getServico().getDuracaoMinutos() == null) {
+                    continue;
+                }
                 aFim = aInicio.plusMinutes(a.getServico().getDuracaoMinutos());
             }
 
-            // slot começa em aInicio e vai de 30 em 30 até antes do fim
             LocalDateTime slot = aInicio;
             while (slot.isBefore(aFim)) {
                 LocalTime t = slot.toLocalTime();
 
-                // respeita expediente do barbeiro
                 if (!t.isBefore(horaEntrada) && t.isBefore(horaSaida)) {
                     ocupados.add(t.format(HORA_FMT));
                 }
@@ -247,14 +257,15 @@ public class AgendamentoService {
 
         boolean temConflito = agendamentosDoDia.stream()
                 .filter(a -> agendamentoIdExcluir == null || !a.getId().equals(agendamentoIdExcluir))
-                .filter(a -> a.getStatus() == StatusAgendamento.AGENDADO) // evita conflito com CANCELADO/CONCLUIDO
+                .filter(a -> a.getStatus() == StatusAgendamento.AGENDADO)
                 .anyMatch(a -> {
                     LocalDateTime aInicio = a.getDataHora();
                     LocalDateTime aFim = a.getDataHoraFim();
 
-                    if (aInicio == null) return false;
+                    if (aInicio == null) {
+                        return false;
+                    }
 
-                    // fallback se dataHoraFim vier null
                     if (aFim == null && a.getServico() != null && a.getServico().getDuracaoMinutos() != null) {
                         aFim = aInicio.plusMinutes(a.getServico().getDuracaoMinutos());
                     }
@@ -264,8 +275,13 @@ public class AgendamentoService {
                             && fim.isAfter(aInicio);
                 });
 
-        if (temConflito)
+        if (temConflito) {
             throw new BusinessException("Já existe um agendamento neste horário.");
+        }
+    }
+
+    private LocalDateTime agora() {
+        return LocalDateTime.now(ZONA_SISTEMA);
     }
 
     private Agendamento buscarPorId(Long id) {
