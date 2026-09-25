@@ -16,14 +16,16 @@ public class CorsConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         
-        configuration.setAllowedOrigins(List.of(
+        // Permite o domínio principal e subdomínios de preview da Vercel
+        configuration.setAllowedOriginPatterns(List.of(
+            "https://*.vercel.app",
             "https://barbearia-frontend-two.vercel.app",
             "http://localhost:5173",
             "http://localhost:3000"
         ));
         
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"));
+        configuration.setAllowedHeaders(Arrays.asList("*")); // Permite todos os cabeçalhos para evitar bloqueio no preflight
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
