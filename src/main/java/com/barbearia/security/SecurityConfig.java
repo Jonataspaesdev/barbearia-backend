@@ -37,44 +37,31 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
-                // ✅ Associa a configuração explícita de CORS abaixo
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // ✅ Libera explicitamente preflight OPTIONS para evitar redirects e erro 405
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                        // Endpoints públicos de autenticação e documentação
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
-
-                        // Serviços
                         .requestMatchers(HttpMethod.GET, "/servicos", "/servicos/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/servicos").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/servicos/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/servicos/**").hasAuthority("ROLE_ADMIN")
-
-                        // Barbeiros
                         .requestMatchers(HttpMethod.GET, "/barbeiros", "/barbeiros/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_CLIENTE")
                         .requestMatchers(HttpMethod.POST, "/barbeiros/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/barbeiros/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/barbeiros/**").hasAuthority("ROLE_ADMIN")
-
-                        // Clientes
                         .requestMatchers(HttpMethod.GET, "/clientes/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/clientes").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/clientes/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/clientes/**").hasAuthority("ROLE_ADMIN")
-
-                        // Agendamentos
                         .requestMatchers(HttpMethod.POST, "/agendamentos").hasAnyAuthority("ROLE_CLIENTE", "ROLE_ADMIN")
                         .requestMatchers(HttpMethod.GET, "/agendamentos/cliente/**").hasAnyAuthority("ROLE_CLIENTE", "ROLE_ADMIN")
                         .requestMatchers(HttpMethod.GET, "/agendamentos/disponibilidade").hasAnyAuthority("ROLE_CLIENTE", "ROLE_ADMIN")
                         .requestMatchers(HttpMethod.GET, "/agendamentos").hasAnyAuthority("ROLE_ADMIN", "ROLE_BARBEIRO")
                         .requestMatchers(HttpMethod.GET, "/agendamentos/barbeiro/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_BARBEIRO")
                         .requestMatchers(HttpMethod.PUT, "/agendamentos/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_BARBEIRO")
-
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authProvider())
@@ -82,7 +69,6 @@ public class SecurityConfig {
                 .build();
     }
 
-    // ✅ Configuração completa de CORS para impedir o redirect 308 no Render
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
