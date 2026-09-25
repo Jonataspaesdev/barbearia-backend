@@ -57,6 +57,7 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/auth")
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 @Tag(name = "Autenticação", description = "Login e geração de token JWT")
 class AuthController {
 
@@ -168,6 +169,7 @@ class AuthController {
 
 @RestController
 @RequestMapping("/clientes")
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 @Tag(name = "Clientes", description = "CRUD de clientes")
 class ClienteController {
 
@@ -218,6 +220,7 @@ class ClienteController {
 
 @RestController
 @RequestMapping("/servicos")
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 @Tag(name = "Serviços", description = "CRUD de serviços")
 class ServicoController {
 
@@ -316,6 +319,7 @@ class ServicoController {
 
 @RestController
 @RequestMapping("/barbeiros")
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 @Tag(name = "Barbeiros", description = "CRUD de barbeiros")
 class BarbeiroController {
 
@@ -417,7 +421,7 @@ class BarbeiroController {
     @PutMapping("/{id}")
     @Operation(summary = "Atualiza barbeiro")
     public ResponseEntity<BarbeiroResponse> atualizar(@PathVariable Long id,
-                                                     @RequestBody BarbeiroRequest request) {
+                                                         @RequestBody BarbeiroRequest request) {
 
         Barbeiro b = barbeiroRepository.findById(id).orElseThrow();
 
@@ -483,6 +487,7 @@ class BarbeiroController {
 
 @RestController
 @RequestMapping("/agendamentos")
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 @Tag(name = "Agendamentos", description = "CRUD de agendamentos")
 class AgendamentoController {
 
@@ -588,6 +593,7 @@ class AgendamentoController {
 
 @RestController
 @RequestMapping("/pagamentos")
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 @Tag(name = "Pagamentos", description = "Pagamento de agendamentos e relatório financeiro")
 class PagamentoController {
 
